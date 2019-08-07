@@ -32,8 +32,8 @@
 #define RANSACLIB_EXAMPLE_LINE_ESTIMATOR_H_
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <random>
@@ -43,36 +43,29 @@
 #include <Eigen/StdVector>
 
 namespace ransac_lib {
-  
+
 // Implements a simple solver that estimates a line from two data points.
 class LineEstimator {
  public:
   LineEstimator(const Eigen::Matrix2Xd& data);
-  
-  inline int min_sample_size() const {
-    return 2;
-  }
-  
-  inline int non_minimal_sample_size() const {
-    return 6;
-  }
-  
-  inline int num_data() const {
-    return num_data_;
-  }
-  
+
+  inline int min_sample_size() const { return 2; }
+
+  inline int non_minimal_sample_size() const { return 6; }
+
+  inline int num_data() const { return num_data_; }
+
   int MinimalSolver(const std::vector<int>& sample,
                     std::vector<Eigen::Vector3d>* lines) const;
-  
+
   // Returns 0 if no model could be estimated and 1 otherwise.
   // Implemented by a simple linear least squares solver.
   int NonMinimalSolver(const std::vector<int>& sample,
                        Eigen::Vector3d* line) const;
-  
-  
+
   // Evaluates the line on the i-th data point.
   double EvaluateModelOnPoint(const Eigen::Vector3d& line, int i) const;
-  
+
   // Linear least squares solver. Calls NonMinimalSolver.
   inline void LeastSquares(const std::vector<int>& sample,
                            Eigen::Vector3d* line) const {
@@ -85,7 +78,6 @@ class LineEstimator {
   int num_data_;
 };
 
-  
 }  // namespace ransac_lib
 
 #endif  // RANSACLIB_EXAMPLE_LINE_ESTIMATOR_H_

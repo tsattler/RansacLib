@@ -29,8 +29,8 @@
 // author: Torsten Sattler, torsten.sattler.de@googlemail.com
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <random>
@@ -54,7 +54,7 @@ int LineEstimator::MinimalSolver(const std::vector<int>& sample,
                                  std::vector<Eigen::Vector3d>* lines) const {
   lines->clear();
   if (sample.size() < 2u) return 0;
-  
+
   lines->resize(1);
   Eigen::Vector3d p1(data_(0, sample[0]), data_(1, sample[0]), 1.0);
   Eigen::Vector3d p2(data_(0, sample[1]), data_(1, sample[1]), 1.0);
@@ -65,18 +65,18 @@ int LineEstimator::MinimalSolver(const std::vector<int>& sample,
     lines->clear();
     return 0;
   }
-  
+
   (*lines)[0] /= normal_norm;
-  
+
   return 1;
 }
 
 int LineEstimator::NonMinimalSolver(const std::vector<int>& sample,
                                     Eigen::Vector3d* line) const {
   if (sample.size() < 6u) return 0;
-  
+
   const int kNumSamples = static_cast<int>(sample.size());
-  
+
   // We fit the line by estimating the eigenvectors of the covariance matrix
   // of the data.
   Eigen::Vector2d mean(0.0, 0.0);
@@ -84,28 +84,27 @@ int LineEstimator::NonMinimalSolver(const std::vector<int>& sample,
     mean += data_.col(sample[i]);
   }
   mean /= static_cast<double>(kNumSamples);
-  
+
   // Builds the covariance matrix C.
   Eigen::Matrix2d C = Eigen::Matrix2d::Zero();
-  
+
   for (int i = 0; i < kNumSamples; ++i) {
     Eigen::Vector2d d = data_.col(sample[i]) - mean;
     C += d * d.transpose();
   }
   C /= static_cast<double>(kNumSamples - 1);
-  
+
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig_solver(C);
   if (eig_solver.info() != Eigen::Success) return 0;
-  
+
   line->head<2>() = eig_solver.eigenvectors().col(1);
-  
+
   // Re-estimates the translation along the line to account for subtraction
   // of mean.
-  (*line)[2] = - line->head<2>().dot(mean);
-  
+  (*line)[2] = -line->head<2>().dot(mean);
+
   return 1;
 }
-
 
 // Evaluates the line on the i-th data point.
 double LineEstimator::EvaluateModelOnPoint(const Eigen::Vector3d& line,
@@ -113,5 +112,5 @@ double LineEstimator::EvaluateModelOnPoint(const Eigen::Vector3d& line,
   double residual = line.dot(data_.col(i).homogeneous());
   return residual * residual;
 }
-  
+
 }  // namespace ransac_lib

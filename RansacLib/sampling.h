@@ -32,8 +32,8 @@
 #define RANSACLIB_RANSACLIB_SAMPLING_H_
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <random>
@@ -45,14 +45,14 @@ namespace ransac_lib {
 class UniformSampling {
  public:
   UniformSampling(const unsigned int random_seed, const int num_data,
-                  const int sample_size) :
-                  num_data_(num_data), sample_size_(sample_size) {
+                  const int sample_size)
+      : num_data_(num_data), sample_size_(sample_size) {
     rng_.seed(random_seed);
     draw_sample_ = DrawBetterThanShuffle(sample_size_, num_data_);
     uniform_dstr_.param(
-               std::uniform_int_distribution<int>::param_type(0,num_data_ - 1));
+        std::uniform_int_distribution<int>::param_type(0, num_data_ - 1));
   }
-  
+
   // Draws minimal sample.
   void Sample(std::vector<int>* random_sample) {
     if (draw_sample_) {
@@ -67,15 +67,15 @@ class UniformSampling {
   // efficient. Returns true if sampling is more efficient.
   inline bool DrawBetterThanShuffle(const int sample_size,
                                     const int num_elements) const {
-    const double kCoeff = static_cast<double>(num_elements)
-    / static_cast<double>(num_elements - sample_size);
+    const double kCoeff = static_cast<double>(num_elements) /
+                          static_cast<double>(num_elements - sample_size);
     // Exercise for the interested reader: Determine where this equation comes
     // from. Hint: Use Harmonic numbers and approximate them as
     // H_n \approx ln(n) (actually: ln(n) + 1/n <= H_n <= ln(n) + 1,
     // but we use equality for simplicity here.
     return (kCoeff < M_E);
   }
-  
+
   // Draws a minimal sample of size sample_size.
   void DrawSample(std::vector<int>* random_sample) {
     std::vector<int>& sample = *random_sample;
@@ -94,7 +94,7 @@ class UniformSampling {
       }
     }
   }
-  
+
   // DrawSample is efficient is sample_size is small enough compared to the
   // number of elements. Otherwise, it is faster to randomly shuffle the
   // elements and pick the first sample_size ones.
@@ -102,12 +102,12 @@ class UniformSampling {
     random_sample->resize(num_data_);
     std::iota(random_sample->begin(), random_sample->end(), 0);
     if (sample_size_ == num_data_) return;
-    
+
     // Fisher-Yates shuffling.
     RandomShuffle(random_sample);
     random_sample->resize(sample_size_);
   }
-  
+
   // This function implements Fisher-Yates shuffling, implemented "manually"
   // here following: https://lemire.me/blog/2016/10/10/a-case-study-in-the-
   // performance-cost-of-abstraction-cs-stdshuffle/
@@ -120,7 +120,7 @@ class UniformSampling {
       std::swap(sample[i], sample[idx]);
     }
   }
-  
+
   // The random number generator used by RANSAC.
   std::mt19937 rng_;
   std::uniform_int_distribution<int> uniform_dstr_;
@@ -133,7 +133,6 @@ class UniformSampling {
   bool draw_sample_;
 };
 
-  
 }  // namespace ransac_lib
 
 #endif  // RANSACLIB_RANSACLIB_SAMPLING_H_

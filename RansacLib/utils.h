@@ -32,8 +32,8 @@
 #define RANSACLIB_RANSACLIB_UTILS_H_
 
 #include <algorithm>
-#include <cstddef>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <random>
@@ -54,7 +54,7 @@ void RandomShuffle(std::mt19937* rng, std::vector<int>* random_sample) {
     std::swap(sample[i], sample[idx]);
   }
 }
-  
+
 void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
                             std::vector<int>* random_sample) {
   RandomShuffle(rng, random_sample);
