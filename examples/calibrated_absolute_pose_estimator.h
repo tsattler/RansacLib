@@ -11,7 +11,7 @@
 //       notice, this list of conditions and the following disclaimer in the
 //       documentation and/or other materials provided with the distribution.
 //
-//     * Neither the name of Torsten Sattler nor the
+//     * Neither the name of the copyright holder nor the
 //       names of its contributors may be used to endorse or promote products
 //       derived from this software without specific prior written permission.
 //
@@ -28,56 +28,93 @@
 //
 // author: Torsten Sattler, torsten.sattler.de@googlemail.com
 
-#ifndef RANSACLIB_EXAMPLE_LINE_ESTIMATOR_H_
-#define RANSACLIB_EXAMPLE_LINE_ESTIMATOR_H_
+#ifndef RANSACLIB_EXAMPLE_CALIBRATED_ABSOLUTE_POSE_ESTIMATOR_H_
+#define RANSACLIB_EXAMPLE_CALIBRATED_ABSOLUTE_POSE_ESTIMATOR_H_
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <random>
 #include <vector>
 
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
+#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
+#include <opengv/absolute_pose/methods.hpp>
+#include <opengv/types.hpp>
+
 namespace ransac_lib {
 
-// Implements a simple solver that estimates a line from two data points.
-class LineEstimator {
+namespace calibrated_absolute_pose {
+
+// An absolute pose is a Eigen 3x4 double matrix storing the rotation and
+// translation of the camera.
+typedef opengv::transformation_t CameraPose;
+typedef opengv::transformations_t CameraPoses;
+
+// Implements a camera pose solver for calibrated cameras. Uses the OpenGV
+// implementations of the P3P and EPnP solvers, as well as for non-linear
+// optimization.
+// The P3P algorithm is used as a minimal solver. To avoid returning multiple
+// models, a fourth poit is used to pick at most one model out of the up to
+// four models estimated by P3P.
+class CalibratedAbsolutePoseEstimator {
  public:
-  LineEstimator(const Eigen::Matrix2Xd& data);
+  // The input to the constructor are the camera focal lengths f_x, f_y, a set
+  // of 2D keypoint positions, and the corresponding 3D points. The 2D points
+  // are expected to be centered around the principal point (i.e., the
+  // principal has already been subtracted) and to be undistorted.
+  // In addition, the squared inlier threshold used by *SAC is required as
+  // input. It is used to pick at most one of the up to 4 solutions created by
+  // the P3P solver.
+  CalibratedAbsolutePoseEstimator(const double f_x, const double f_y,
+                                  const double squared_inlier_threshold,
+                                  const Eigen::Matrix2Xd& points2D,
+                                  const Eigen::Matrix3Xd& points3D);
 
-  inline int min_sample_size() const { return 2; }
+  inline int min_sample_size() const { return 4; }
 
+  // OpenGV's EPnP implementation asserts that there are at least 6 matches as
+  // input (to ensure that only a single solution is provided).
   inline int non_minimal_sample_size() const { return 6; }
 
   inline int num_data() const { return num_data_; }
 
-  int MinimalSolver(const std::vector<int>& sample,
-                    std::vector<Eigen::Vector3d>* lines) const;
+  int MinimalSolver(
+      const std::vector<int>& sample,
+      std::vector<CameraPose, Eigen::aligned_allocator<CameraPose> >* poses)
+      const;
 
   // Returns 0 if no model could be estimated and 1 otherwise.
   // Implemented by a simple linear least squares solver.
-  int NonMinimalSolver(const std::vector<int>& sample,
-                       Eigen::Vector3d* line) const;
+  int NonMinimalSolver(const std::vector<int>& sample, CameraPose* pose) const;
 
   // Evaluates the line on the i-th data point.
-  double EvaluateModelOnPoint(const Eigen::Vector3d& line, int i) const;
+  double EvaluateModelOnPoint(const CameraPose& pose, int i) const;
 
   // Linear least squares solver. Calls NonMinimalSolver.
-  inline void LeastSquares(const std::vector<int>& sample,
-                           Eigen::Vector3d* line) const {
-    NonMinimalSolver(sample, line);
-  }
+  void LeastSquares(const std::vector<int>& sample, CameraPose* pose) const;
 
  protected:
-  // Matrix holding the 2D points through which the line is fitted.
-  Eigen::Matrix2Xd data_;
+  // Focal lengths in x- and y-directions.
+  double focal_x_;
+  double focal_y_;
+  double squared_inlier_threshold_;
+  // Matrix holding the 2D point positions.
+  Eigen::Matrix2Xd points2D_;
+  // Matrix holding the corresponding 3D point positions.
+  Eigen::Matrix3Xd points3D_;
+  // The adapter used by OpenGV's solvers.
+  std::unique_ptr<opengv::absolute_pose::CentralAbsoluteAdapter> adapter_;
   int num_data_;
 };
 
+}  // namespace calibrated_absolute_pose
+
 }  // namespace ransac_lib
 
-#endif  // RANSACLIB_EXAMPLE_LINE_ESTIMATOR_H_
+#endif  // RANSACLIB_EXAMPLE_CALIBRATED_ABSOLUTE_POSE_ESTIMATOR_H_
