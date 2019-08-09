@@ -56,6 +56,10 @@ namespace calibrated_absolute_pose {
 typedef opengv::transformation_t CameraPose;
 typedef opengv::transformations_t CameraPoses;
 
+typedef std::vector<Eigen::Vector2d> Points2D;
+typedef opengv::points_t Points3D;
+typedef opengv::bearingVectors_t ViewingRays;
+
 // Implements a camera pose solver for calibrated cameras. Uses the OpenGV
 // implementations of the P3P and EPnP solvers, as well as for non-linear
 // optimization.
@@ -64,6 +68,8 @@ typedef opengv::transformations_t CameraPoses;
 // four models estimated by P3P.
 class CalibratedAbsolutePoseEstimator {
  public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   // The input to the constructor are the camera focal lengths f_x, f_y, a set
   // of 2D keypoint positions, and the corresponding 3D points. The 2D points
   // are expected to be centered around the principal point (i.e., the
@@ -73,8 +79,9 @@ class CalibratedAbsolutePoseEstimator {
   // the P3P solver.
   CalibratedAbsolutePoseEstimator(const double f_x, const double f_y,
                                   const double squared_inlier_threshold,
-                                  const Eigen::Matrix2Xd& points2D,
-                                  const Eigen::Matrix3Xd& points3D);
+                                  const Points2D& points2D,
+                                  const ViewingRays& rays,
+                                  const Points3D& points3D);
 
   inline int min_sample_size() const { return 4; }
 
@@ -96,17 +103,20 @@ class CalibratedAbsolutePoseEstimator {
   // Linear least squares solver. Calls NonMinimalSolver.
   void LeastSquares(const std::vector<int>& sample, CameraPose* pose) const;
 
+  static void PixelsToViewingRays(const double focal_x, const double focal_y,
+                                  const Points2D& points2D, ViewingRays* rays);
+
  protected:
   // Focal lengths in x- and y-directions.
   double focal_x_;
   double focal_y_;
   double squared_inlier_threshold_;
   // Matrix holding the 2D point positions.
-  Eigen::Matrix2Xd points2D_;
+  Points2D points2D_;
   // Matrix holding the corresponding 3D point positions.
-  Eigen::Matrix3Xd points3D_;
+  Points3D points3D_;
   // The adapter used by OpenGV's solvers.
-  std::unique_ptr<opengv::absolute_pose::CentralAbsoluteAdapter> adapter_;
+  opengv::absolute_pose::CentralAbsoluteAdapter adapter_;
   int num_data_;
 };
 

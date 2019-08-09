@@ -28,6 +28,8 @@
 //
 // author: Torsten Sattler, torsten.sattler.de@googlemail.com
 
+#include <iostream>
+
 #include "calibrated_absolute_pose_estimator.h"
 
 namespace ransac_lib {
@@ -36,38 +38,21 @@ namespace calibrated_absolute_pose {
 
 CalibratedAbsolutePoseEstimator::CalibratedAbsolutePoseEstimator(
     const double f_x, const double f_y, const double squared_inlier_threshold,
-    const Eigen::Matrix2Xd& points2D, const Eigen::Matrix3Xd& points3D)
+    const Points2D& points2D, const ViewingRays& rays, const Points3D& points3D)
     : focal_x_(f_x),
       focal_y_(f_y),
       squared_inlier_threshold_(squared_inlier_threshold),
       points2D_(points2D),
-      points3D_(points3D) {
-  num_data_ = points2D_.cols();
-
-  // Creates the bearing vectors and points for the OpenGV adapter.
-  opengv::bearingVectors_t bearing_vectors(num_data_);
-  opengv::points_t points(num_data_);
-  for (int i = 0; i < num_data_; ++i) {
-    bearing_vectors[i] = points2D_.col(i).homogeneous();
-    bearing_vectors[i][0] /= focal_x_;
-    bearing_vectors[i][1] /= focal_y_;
-    bearing_vectors[i].normalize();
-
-    points[i] = points3D_.col(i);
-  }
-  adapter_.reset(new opengv::absolute_pose::CentralAbsoluteAdapter(
-      bearing_vectors, points));
+      points3D_(points3D),
+      adapter_(rays, points3D) {
+  num_data_ = static_cast<int>(points2D_.size());
 }
 
 int CalibratedAbsolutePoseEstimator::MinimalSolver(
-    const std::vector<int>& sample,
-    std::vector<CameraPose, Eigen::aligned_allocator<CameraPose> >* poses)
-    const {
+    const std::vector<int>& sample, CameraPoses* poses) const {
   poses->clear();
-
-  CameraPoses p3p_poses = opengv::absolute_pose::p3p_kneip(*adapter_, sample);
+  CameraPoses p3p_poses = opengv::absolute_pose::p3p_kneip(adapter_, sample);
   if (p3p_poses.empty()) return 0;
-
   for (const CameraPose& pose : p3p_poses) {
     const double kError = EvaluateModelOnPoint(pose, sample[3]);
     if (kError < squared_inlier_threshold_) {
@@ -76,6 +61,7 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
       break;
     }
   }
+
   return static_cast<int>(poses->size());
 }
 
@@ -83,14 +69,14 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
 // Implemented by a simple linear least squares solver.
 int CalibratedAbsolutePoseEstimator::NonMinimalSolver(
     const std::vector<int>& sample, CameraPose* pose) const {
-  *pose = opengv::absolute_pose::epnp(*adapter_, sample);
+  *pose = opengv::absolute_pose::epnp(adapter_, sample);
   return 1;
 }
 
 // Evaluates the line on the i-th data point.
 double CalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
     const CameraPose& pose, int i) const {
-  Eigen::Vector4d p_h = points3D_.col(i).homogeneous();
+  Eigen::Vector4d p_h = points3D_[i].homogeneous();
   Eigen::Vector3d p_c = pose * p_h;
 
   // Check whether point projects behind the camera.
@@ -100,7 +86,7 @@ double CalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
   p_2d[0] *= focal_x_;
   p_2d[1] *= focal_y_;
 
-  return (p_2d - points2D_.col(i)).squaredNorm();
+  return (p_2d - points2D_[i]).squaredNorm();
 }
 
 // Linear least squares solver. Calls NonMinimalSolver.
@@ -114,8 +100,8 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   opengv::points_t points(kSampleSize);
   for (int i = 0; i < kSampleSize; ++i) {
     const int kIdx = sample[i];
-    bearing_vectors[i] = adapter_->getBearingVector(kIdx);
-    points[i] = adapter_->getPoint(kIdx);
+    bearing_vectors[i] = adapter_.getBearingVector(kIdx);
+    points[i] = adapter_.getPoint(kIdx);
   }
 
   opengv::absolute_pose::CentralAbsoluteAdapter lsq_adapter(
@@ -124,6 +110,20 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   *pose = opengv::absolute_pose::optimize_nonlinear(lsq_adapter);
 }
 
+void CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
+    const double focal_x, const double focal_y, const Points2D& points2D,
+    ViewingRays* rays) {
+  const int kNumData = static_cast<int>(points2D.size());
+
+  // Creates the bearing vectors and points for the OpenGV adapter.
+  rays->resize(kNumData);
+  for (int i = 0; i < kNumData; ++i) {
+    (*rays)[i] = points2D[i].homogeneous();
+    (*rays)[i][0] /= focal_x;
+    (*rays)[i][1] /= focal_y;
+    (*rays)[i].normalize();
+  }
+}
 }  // namespace calibrated_absolute_pose
 
 }  // namespace ransac_lib
