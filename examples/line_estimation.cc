@@ -131,7 +131,9 @@ int main(int argc, char** argv) {
     std::cout << "   ... instance generated" << std::endl;
 
     ransac_lib::LineEstimator solver(data);
-    ransac_lib::LocallyOptimizedMSAC<Eigen::Vector3d, ransac_lib::LineEstimator>
+    ransac_lib::LocallyOptimizedMSAC<Eigen::Vector3d,
+                                     std::vector<Eigen::Vector3d>,
+                                     ransac_lib::LineEstimator>
         lomsac;
     ransac_lib::RansacStatistics ransac_stats;
 

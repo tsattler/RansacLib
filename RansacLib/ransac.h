@@ -134,7 +134,7 @@ class RansacBase {
 // Implements LO-RANSAC with MSAC (top-hat) scoring, based on the description
 // provided in [Lebeda, Matas, Chum, Fixing the Locally Optimized RANSAC, BMVC
 // 2012]. Iteratively re-weighted least-squares optimization is optional.
-template <class Model, class Solver>
+template <class Model, class ModelVector, class Solver>
 class LocallyOptimizedMSAC : public RansacBase {
  public:
   // Estimates a model using a given solver. Notice that the solver contains
@@ -167,7 +167,7 @@ class LocallyOptimizedMSAC : public RansacBase {
     double best_min_model_score = std::numeric_limits<double>::max();
 
     std::vector<int> minimal_sample(kMinSampleSize);
-    std::vector<Model> estimated_models;
+    ModelVector estimated_models;
 
     // Runs random sampling.
     for (stats.num_iterations = 0u; stats.num_iterations < max_num_iterations;
@@ -222,8 +222,7 @@ class LocallyOptimizedMSAC : public RansacBase {
   }
 
  protected:
-  void GetBestEstimatedModelId(const Solver& solver,
-                               const std::vector<Model>& models,
+  void GetBestEstimatedModelId(const Solver& solver, const ModelVector& models,
                                const double squared_inlier_threshold,
                                double* best_score, int* best_model_id) const {
     *best_score = std::numeric_limits<double>::max();

@@ -45,6 +45,76 @@
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
 
+void GenerateRandomInstance(const double width, const double height,
+                            const double focal_length, const int num_inliers,
+                            const int num_outliers, double inlier_threshold,
+                            const double min_depth, const double max_depth,
+                            Eigen::Matrix2Xd* points2D,
+                            Eigen::Matrix3Xd* points3D) {
+  const int kNumPoints = num_inliers + num_outliers;
+  points2D->resize(2, kNumPoints);
+  points3D->resize(3, kNumPoints);
+
+  std::vector<int> indices(kNumPoints);
+  std::iota(indices.begin(), indices.end(), 0);
+
+  std::random_device rand_dev;
+  std::mt19937 rng(rand_dev());
+
+  std::shuffle(indices.begin(), indices.end(), rng);
+
+  const double kWidthHalf = width * 0.5;
+  const double kHeightHalf = height * 0.5;
+  std::uniform_real_distribution<double> distr_x(-kWidthHalf, kWidthHalf);
+  std::uniform_real_distribution<double> distr_y(-kHeightHalf, kHeightHalf);
+  std::uniform_real_distribution<double> distr_d(-min_depth, max_depth);
+
+  // Generates the inliers.
+  for (int i = 0; i < num_inliers; ++i) {
+    const int kIndex = indices[i];
+    points2D->col(kIndex) = Eigen::Vector2d(distr_x(rng), distr_y(rng));
+
+    Eigen::Vector3d dir = points2D->col(kIndex).homogeneous();
+    dir.head<2>() /= focal_length;
+    dir.normalize();
+
+    // Obtains the 3D point.
+    points3D->col(kIndex) = dir * distr_d(rng);
+  }
+
+  // Generates the outlier.
+  for (int i = num_inliers; i < kNumPoints; ++i) {
+    const int kIndex = indices[i];
+    Eigen::Vector2d p(distr_x(rng), distr_y(rng));
+
+    Eigen::Vector3d dir = p.homogeneous();
+    dir.head<2>() /= focal_length;
+    dir.normalize();
+
+    // Obtains the 3D point.
+    points3D->col(kIndex) = dir * distr_d(rng);
+
+    // Estimates a new pixel position that is far enough from the original one.
+    points2D->col(kIndex) = Eigen::Vector2d(distr_x(rng), distr_y(rng));
+    while ((points2D->col(kIndex) - p).norm() < 5.0 * inlier_threshold) {
+      points2D->col(kIndex) = Eigen::Vector2d(distr_x(rng), distr_y(rng));
+    }
+  }
+
+  // Randomly rotates and translates the 3D points.
+  Eigen::Quaterniond q = Eigen::Quaterniond::UnitRandom();
+  Eigen::Matrix3d R(q);
+  std::uniform_real_distribution<double> distr(-1.0, 1.0);
+  std::uniform_real_distribution<double> distr_scale(1.0, 100.0);
+  Eigen::Vector3d t(distr(rng), distr(rng), distr(rng));
+  t *= distr_scale(rng);
+
+  for (int i = 0; i < kNumPoints; ++i) {
+    Eigen::Vector3d p = points3D->col(i);
+    points3D->col(i) = R * p + t;
+  }
+}
+
 int main(int argc, char** argv) {
   ransac_lib::LORansacOptions options;
   options.min_num_iterations_ = 100u;
@@ -54,9 +124,49 @@ int main(int argc, char** argv) {
   std::random_device rand_dev;
   options.random_seed_ = rand_dev();
 
-  ransac_lib::LocallyOptimizedMSAC<
-      ransac_lib::calibrated_absolute_pose::CameraPose,
-      ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator>
-      lomsac;
-  ransac_lib::RansacStatistics ransac_stats;
+  // Generates random instances for outlier ratios 10%, 20%, 30%, ..., 90%,
+  // and then applies RANSAC on it.
+  // kNumDataPoints data points are used.
+  const int kNumDataPoints = 1000;
+
+  std::vector<double> outlier_ratios = {0.1, 0.2, 0.3, 0.4, 0.5,
+                                        0.6, 0.7, 0.8, 0.9, 0.95};
+
+  const double kWidth = 640.0;
+  const double kHeight = 320.0;
+  const double kFocalLength = (kWidth * 0.5) / std::tan(60.0 * M_PI / 180.0);
+  const double kInThreshPX = 6.0;
+
+  for (const double outlier_ratio : outlier_ratios) {
+    std::cout << " Inlier ratio: " << 1.0 - outlier_ratio << std::endl;
+    int num_outliers =
+        static_cast<int>(static_cast<double>(kNumDataPoints) * outlier_ratio);
+    int num_inliers = kNumDataPoints - num_outliers;
+
+    Eigen::Matrix2Xd points2D;
+    Eigen::Matrix3Xd points3D;
+    GenerateRandomInstance(kWidth, kHeight, kFocalLength, num_inliers,
+                           num_outliers, kInThreshPX, 1.0, 10.0, &points2D,
+                           &points3D);
+    std::cout << "   ... instance generated" << std::endl;
+
+    ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator
+        solver(kFocalLength, kFocalLength, kInThreshPX * kInThreshPX, points2D,
+               points3D);
+
+    ransac_lib::LocallyOptimizedMSAC<
+        ransac_lib::calibrated_absolute_pose::CameraPose,
+        ransac_lib::calibrated_absolute_pose::CameraPoses,
+        ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator>
+        lomsac;
+    ransac_lib::RansacStatistics ransac_stats;
+
+    std::cout << "   ... running LOMSAC" << std::endl;
+    ransac_lib::calibrated_absolute_pose::CameraPose best_model;
+    int num_ransac_inliers =
+        lomsac.EstimateModel(options, solver, &best_model, &ransac_stats);
+    std::cout << "   ... LOMSAC found " << num_ransac_inliers << " inliers in "
+              << ransac_stats.num_iterations << " iterations with an inlier "
+              << "ratio of " << ransac_stats.inlier_ratio << std::endl;
+  }
 }

@@ -84,10 +84,7 @@ class CalibratedAbsolutePoseEstimator {
 
   inline int num_data() const { return num_data_; }
 
-  int MinimalSolver(
-      const std::vector<int>& sample,
-      std::vector<CameraPose, Eigen::aligned_allocator<CameraPose> >* poses)
-      const;
+  int MinimalSolver(const std::vector<int>& sample, CameraPoses* poses) const;
 
   // Returns 0 if no model could be estimated and 1 otherwise.
   // Implemented by a simple linear least squares solver.
