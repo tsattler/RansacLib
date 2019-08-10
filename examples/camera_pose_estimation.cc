@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
     // Runs LO-MSAC, as described in Lebeda et al., BMVC 2012.
     std::cout << "   ... running LO-MSAC" << std::endl;
     {
-      options.min_sample_multiplicator_ = 4;
+      options.min_sample_multiplicator_ = 7;
       options.num_lsq_iterations_ = 4;
       options.num_lo_steps_ = 10;
 

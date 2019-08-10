@@ -184,7 +184,7 @@ class LocallyOptimizedMSAC : public RansacBase {
       int best_local_model_id = 0;
       GetBestEstimatedModelId(solver, estimated_models, kSqrInlierThresh,
                               &best_local_score, &best_local_model_id);
-      
+
       // Updates the best model found so far.
       if (best_local_score < best_min_model_score) {
         // New best model (estimated from inliers found. Stores this model
@@ -205,7 +205,7 @@ class LocallyOptimizedMSAC : public RansacBase {
         LocalOptimization(options, solver, best_minimal_model,
                           best_min_model_score, &refined_model,
                           &score_refined_model);
-        
+
         // Updates the best model.
         UpdateBestModel(score_refined_model, refined_model,
                         &(stats.best_model_score), best_model);
@@ -302,7 +302,7 @@ class LocallyOptimizedMSAC : public RansacBase {
     // smallest non-minimal sample has size 4.
     const int kMinNonMinSampleSize = solver.non_minimal_sample_size();
     if (kMinNonMinSampleSize > kNumData) return;
-    
+
     const int kMinSampleSize = solver.min_sample_size();
 
     const double kSqInThresh = options.squared_inlier_threshold_;
@@ -326,10 +326,10 @@ class LocallyOptimizedMSAC : public RansacBase {
         GetInliers(solver, m_init, kSqInThresh, &inliers_base);
 
     // Determines the size of the non-miminal samples drawn in each LO step.
-    const int kNonMinSampleSize = std::max(
-        kMinNonMinSampleSize,
-        std::min(kMinSampleSize * options.non_min_sample_multiplier_,
-                 static_cast<int>(inliers_base.size()) / 2));
+    const int kNonMinSampleSize =
+        std::max(kMinNonMinSampleSize,
+                 std::min(kMinSampleSize * options.non_min_sample_multiplier_,
+                          static_cast<int>(inliers_base.size()) / 2));
 
     // Performs the actual local optimization (LO).
     std::vector<int> sample;
