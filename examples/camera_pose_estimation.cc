@@ -140,13 +140,10 @@ int main(int argc, char** argv) {
   std::random_device rand_dev;
   options.random_seed_ = rand_dev();
 
-  options.min_sample_multiplicator_ = 7;
-  options.num_lsq_iterations_ = 0;
-
   // Generates random instances for outlier ratios 10%, 20%, 30%, ..., 90%,
   // and then applies RANSAC on it.
   // kNumDataPoints data points are used.
-  const int kNumDataPoints = 100;
+  const int kNumDataPoints = 2000;
 
   std::vector<double> outlier_ratios = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
                                         0.6, 0.7, 0.8, 0.9, 0.95};
@@ -176,26 +173,32 @@ int main(int argc, char** argv) {
         solver(kFocalLength, kFocalLength, kInThreshPX * kInThreshPX, points2D,
                rays, points3D);
 
-    ransac_lib::LocallyOptimizedMSAC<
-        ransac_lib::calibrated_absolute_pose::CameraPose,
-        ransac_lib::calibrated_absolute_pose::CameraPoses,
-        ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator>
-        lomsac;
-    ransac_lib::RansacStatistics ransac_stats;
+    // Runs LO-MSAC, as described in Lebeda et al., BMVC 2012.
+    std::cout << "   ... running LO-MSAC" << std::endl;
+    {
+      options.min_sample_multiplicator_ = 7;
+      options.num_lsq_iterations_ = 4;
+      options.num_lo_steps_ = 10;
 
-    std::cout << "   ... running LOMSAC" << std::endl;
-    auto ransac_start = std::chrono::system_clock::now();
-    ransac_lib::calibrated_absolute_pose::CameraPose best_model;
-    int num_ransac_inliers =
-        lomsac.EstimateModel(options, solver, &best_model, &ransac_stats);
-    auto ransac_end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = ransac_end - ransac_start;
-    std::cout << "   ... LOMSAC found " << num_ransac_inliers << " inliers in "
-              << ransac_stats.num_iterations
-              << " iterations with an inlier ratio of "
-              << ransac_stats.inlier_ratio << std::endl;
-    std::cout << "   ... LOMSAC took " << elapsed_seconds.count() << " s"
-              << std::endl;
+      ransac_lib::LocallyOptimizedMSAC<
+          ransac_lib::calibrated_absolute_pose::CameraPose,
+          ransac_lib::calibrated_absolute_pose::CameraPoses,
+          ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator>
+          lomsac;
+      ransac_lib::RansacStatistics ransac_stats;
+      auto ransac_start = std::chrono::system_clock::now();
+      ransac_lib::calibrated_absolute_pose::CameraPose best_model;
+      int num_ransac_inliers =
+          lomsac.EstimateModel(options, solver, &best_model, &ransac_stats);
+      auto ransac_end = std::chrono::system_clock::now();
+      std::chrono::duration<double> elapsed_seconds = ransac_end - ransac_start;
+      std::cout << "   ... LOMSAC found " << num_ransac_inliers
+                << " inliers in " << ransac_stats.num_iterations
+                << " iterations with an inlier ratio of "
+                << ransac_stats.inlier_ratio << std::endl;
+      std::cout << "   ... LOMSAC took " << elapsed_seconds.count() << " s"
+                << std::endl;
+    }
   }
   return 0;
 }
