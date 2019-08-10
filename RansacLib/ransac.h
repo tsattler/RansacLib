@@ -192,6 +192,10 @@ class LocallyOptimizedMSAC : public RansacBase {
         best_min_model_score = best_local_score;
         best_minimal_model = estimated_models[best_local_model_id];
 
+        // Updates the best model.
+        UpdateBestModel(best_min_model_score, best_minimal_model,
+                        &(stats.best_model_score), best_model);
+
         // Performs local optimization. By construction, the local optimization
         // method returns the best model between all models found by local
         // optimization and the input model, i.e., score_refined_model <=
@@ -203,7 +207,7 @@ class LocallyOptimizedMSAC : public RansacBase {
                           &score_refined_model);
 
         // Updates the best model.
-        UpdateBestModel(score_refined_model, best_minimal_model,
+        UpdateBestModel(score_refined_model, refined_model,
                         &(stats.best_model_score), best_model);
 
         // Updates the number of RANSAC iterations.

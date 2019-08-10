@@ -30,6 +30,8 @@
 
 #include <iostream>
 
+#include <Eigen/StdVector>
+
 #include "calibrated_absolute_pose_estimator.h"
 
 namespace ransac_lib {
@@ -54,9 +56,14 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
   CameraPoses p3p_poses = opengv::absolute_pose::p3p_kneip(adapter_, sample);
   if (p3p_poses.empty()) return 0;
   for (const CameraPose& pose : p3p_poses) {
-    const double kError = EvaluateModelOnPoint(pose, sample[3]);
+    CameraPose P = pose;
+    // OpenGV returns the transformation from the camera to the world coordinate
+    // system. We store the rotation from the world to the local coordinate
+    // system instead.
+    P.topLeftCorner<3, 3>() = pose.topLeftCorner<3, 3>().transpose();
+    const double kError = EvaluateModelOnPoint(P, sample[3]);
     if (kError < squared_inlier_threshold_) {
-      poses->push_back(pose);
+      poses->push_back(P);
       // At most one pose should be correct.
       break;
     }
@@ -69,15 +76,20 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
 // Implemented by a simple linear least squares solver.
 int CalibratedAbsolutePoseEstimator::NonMinimalSolver(
     const std::vector<int>& sample, CameraPose* pose) const {
-  *pose = opengv::absolute_pose::epnp(adapter_, sample);
+  CameraPose P = opengv::absolute_pose::epnp(adapter_, sample);
+  // OpenGV returns the transformation from the camera to the world coordinate
+  // system. We store the rotation from the world to the local coordinate
+  // system instead.
+  *pose = P;
+  pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
   return 1;
 }
 
 // Evaluates the line on the i-th data point.
 double CalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
     const CameraPose& pose, int i) const {
-  Eigen::Vector4d p_h = points3D_[i].homogeneous();
-  Eigen::Vector3d p_c = pose * p_h;
+  Eigen::Vector3d p_c =
+      pose.topLeftCorner<3, 3>() * (points3D_[i] - pose.col(3));
 
   // Check whether point projects behind the camera.
   if (p_c[2] < 0.0) return std::numeric_limits<double>::max();
@@ -92,6 +104,11 @@ double CalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
 // Linear least squares solver. Calls NonMinimalSolver.
 void CalibratedAbsolutePoseEstimator::LeastSquares(
     const std::vector<int>& sample, CameraPose* pose) const {
+  // OpenGV returns the transformation from the camera to the world coordinate
+  // system. We store the rotation from the world to the local coordinate
+  // system instead.
+  Eigen::Matrix3d R = pose->topLeftCorner<3, 3>().transpose();
+  Eigen::Vector3d c = pose->col(3);
   // At the moment, we need to copy data as we need to add the current pose
   // estimate to the adapter, which would break the requirement that this
   // function is constant.
@@ -104,10 +121,12 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
     points[i] = adapter_.getPoint(kIdx);
   }
 
-  opengv::absolute_pose::CentralAbsoluteAdapter lsq_adapter(
-      bearing_vectors, points, pose->col(3), pose->topLeftCorner<3, 3>());
+  opengv::absolute_pose::CentralAbsoluteAdapter lsq_adapter(bearing_vectors,
+                                                            points, c, R);
 
-  *pose = opengv::absolute_pose::optimize_nonlinear(lsq_adapter);
+  CameraPose P = opengv::absolute_pose::optimize_nonlinear(lsq_adapter);
+  *pose = P;
+  pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
 }
 
 void CalibratedAbsolutePoseEstimator::PixelsToViewingRays(

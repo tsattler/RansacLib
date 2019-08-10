@@ -50,15 +50,16 @@
 namespace ransac_lib {
 
 namespace calibrated_absolute_pose {
-
+using Eigen::Vector3d;
 // An absolute pose is a Eigen 3x4 double matrix storing the rotation and
 // translation of the camera.
-typedef opengv::transformation_t CameraPose;
-typedef opengv::transformations_t CameraPoses;
+typedef Eigen::Matrix<double, 3, 4> CameraPose;
+typedef std::vector<CameraPose, Eigen::aligned_allocator<CameraPose>>
+    CameraPoses;
 
 typedef std::vector<Eigen::Vector2d> Points2D;
-typedef opengv::points_t Points3D;
-typedef opengv::bearingVectors_t ViewingRays;
+typedef std::vector<Vector3d, Eigen::aligned_allocator<Vector3d>> Points3D;
+typedef std::vector<Vector3d, Eigen::aligned_allocator<Vector3d>> ViewingRays;
 
 // Implements a camera pose solver for calibrated cameras. Uses the OpenGV
 // implementations of the P3P and EPnP solvers, as well as for non-linear
@@ -66,6 +67,9 @@ typedef opengv::bearingVectors_t ViewingRays;
 // The P3P algorithm is used as a minimal solver. To avoid returning multiple
 // models, a fourth poit is used to pick at most one model out of the up to
 // four models estimated by P3P.
+// The stored camera pose is [R | c], where R is the rotation from world to the
+// local camera coordinate system and c is the position of the camera in the
+// world coordinate system.
 class CalibratedAbsolutePoseEstimator {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

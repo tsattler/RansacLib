@@ -4,11 +4,13 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/cmake")
   set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 endif ()
 
-set (CMAKE_CXX_STANDARD 11)
+#SET(CMAKE_CXX_FLAGS "-std=gnu++17")
 
 find_package (Eigen REQUIRED)
 
 find_package (opengv REQUIRED)
+
+add_definitions (-march=native)
 
 include_directories (
   ${CMAKE_SOURCE_DIR}
