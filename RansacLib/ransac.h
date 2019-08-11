@@ -68,7 +68,8 @@ class LORansacOptions : public RansacOptions {
         threshold_multiplier_(std::sqrt(2.0)),
         num_lsq_iterations_(4),
         min_sample_multiplicator_(7),
-        non_min_sample_multiplier_(3) {}
+        non_min_sample_multiplier_(3),
+        lo_starting_iterations_(50u) {}
   int num_lo_steps_;
   double threshold_multiplier_;
   int num_lsq_iterations_;
@@ -82,6 +83,10 @@ class LORansacOptions : public RansacOptions {
   // min(non_min_sample_size * non_min_sample_multiplier_, N / 2), where N is
   // the number of data points.
   int non_min_sample_multiplier_;
+  // As suggested in Sec. 4.4 in Lebeda et al., Local Optimization is only
+  // performed after the first K_start iterations (set to 50 by Lebeda et al.)
+  // to reduce overhead.
+  uint32_t lo_starting_iterations_;
 };
 
 struct RansacStatistics {
@@ -174,6 +179,26 @@ class LocallyOptimizedMSAC : public RansacBase {
     // Runs random sampling.
     for (stats.num_iterations = 0u; stats.num_iterations < max_num_iterations;
          ++stats.num_iterations) {
+      // As proposed by Lebeda et al., Local Optimization is not executed in
+      // the first lo_starting_iterations_ iterations. We thus run LO on the
+      // best model found so far once we reach this iteration.
+      if (stats.num_iterations == options.lo_starting_iterations_ &&
+          best_min_model_score < std::numeric_limits<double>::max()) {
+        ++stats.number_lo_iterations;
+        LocalOptimization(options, solver, best_model,
+                          &(stats.best_model_score));
+
+        // Updates the number of RANSAC iterations.
+        stats.best_num_inliers = GetInliers(
+            solver, *best_model, kSqrInlierThresh, &(stats.inlier_indices));
+        stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
+                             static_cast<double>(kNumData);
+        max_num_iterations = NumRequiredIterations(
+            stats.inlier_ratio, 1.0 - options.success_probability_,
+            kMinSampleSize, options.min_num_iterations_,
+            options.max_num_iterations_);
+      }
+
       sampler.Sample(&minimal_sample);
 
       // MinimalSolver returns the number of estimated models.
@@ -188,30 +213,40 @@ class LocallyOptimizedMSAC : public RansacBase {
                               &best_local_score, &best_local_model_id);
 
       // Updates the best model found so far.
-      if (best_local_score < best_min_model_score) {
-        ++stats.number_lo_iterations;
-        // New best model (estimated from inliers found. Stores this model
-        // and runs local optimization.
-        best_min_model_score = best_local_score;
-        best_minimal_model = estimated_models[best_local_model_id];
+      if (best_local_score < best_min_model_score ||
+          stats.num_iterations == options.lo_starting_iterations_) {
+        const bool kBestMinModel = best_local_score < best_min_model_score;
 
-        // Updates the best model.
-        UpdateBestModel(best_min_model_score, best_minimal_model,
-                        &(stats.best_model_score), best_model);
+        if (kBestMinModel) {
+          // New best model (estimated from inliers found. Stores this model
+          // and runs local optimization.
+          best_min_model_score = best_local_score;
+          best_minimal_model = estimated_models[best_local_model_id];
+
+          // Updates the best model.
+          UpdateBestModel(best_min_model_score, best_minimal_model,
+                          &(stats.best_model_score), best_model);
+        }
+
+        const bool kRunLO =
+            (stats.num_iterations >= options.lo_starting_iterations_ &&
+             best_min_model_score < std::numeric_limits<double>::max());
+
+        if ((!kBestMinModel) && (!kRunLO)) continue;
 
         // Performs local optimization. By construction, the local optimization
         // method returns the best model between all models found by local
         // optimization and the input model, i.e., score_refined_model <=
         // best_min_model_score holds.
-        Model refined_model;
-        double score_refined_model = std::numeric_limits<double>::max();
-        LocalOptimization(options, solver, best_minimal_model,
-                          best_min_model_score, &refined_model,
-                          &score_refined_model);
+        if (kRunLO) {
+          ++stats.number_lo_iterations;
+          LocalOptimization(options, solver, &best_minimal_model,
+                            &best_min_model_score);
 
-        // Updates the best model.
-        UpdateBestModel(score_refined_model, refined_model,
-                        &(stats.best_model_score), best_model);
+          // Updates the best model.
+          UpdateBestModel(best_min_model_score, best_minimal_model,
+                          &(stats.best_model_score), best_model);
+        }
 
         // Updates the number of RANSAC iterations.
         stats.best_num_inliers = GetInliers(
@@ -223,6 +258,21 @@ class LocallyOptimizedMSAC : public RansacBase {
             kMinSampleSize, options.min_num_iterations_,
             options.max_num_iterations_);
       }
+    }
+
+    // As proposed by Lebeda et al., Local Optimization is not executed in
+    // the first lo_starting_iterations_ iterations. If LO-MSAC needs less than
+    // lo_starting_iterations_ iterations, we run LO now.
+    if (stats.num_iterations <= options.lo_starting_iterations_ &&
+        stats.best_model_score < std::numeric_limits<double>::max()) {
+      ++stats.number_lo_iterations;
+      LocalOptimization(options, solver, best_model, &(stats.best_model_score));
+
+      // Updates the number of RANSAC iterations.
+      stats.best_num_inliers = GetInliers(solver, *best_model, kSqrInlierThresh,
+                                          &(stats.inlier_indices));
+      stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
+                           static_cast<double>(kNumData);
     }
 
     return stats.best_num_inliers;
@@ -290,14 +340,11 @@ class LocallyOptimizedMSAC : public RansacBase {
   }
 
   // See algorithms 2 and 3 in Lebeda et al.
+  // The input model is overwritten with the refined model if the latter is
+  // better, i.e., has a lower score.
   void LocalOptimization(const LORansacOptions& options, const Solver& solver,
-                         const Model& best_minimal_model,
-                         const double score_best_minimal_model,
-                         Model* refined_model,
-                         double* score_refined_model) const {
-    *score_refined_model = score_best_minimal_model;
-    *refined_model = best_minimal_model;
-
+                         Model* best_minimal_model,
+                         double* score_best_minimal_model) const {
     const int kNumData = solver.num_data();
     // kMinNonMinSampleSize stores how many data points are required for a
     // non-minimal sample. For example, consider the case of pose estimation
@@ -317,12 +364,13 @@ class LocallyOptimizedMSAC : public RansacBase {
     std::mt19937 rng;
     rng.seed(options.random_seed_);
 
-    Model m_init = best_minimal_model;
+    Model m_init = *best_minimal_model;
     LeastSquaresFit(options, kSqInThresh * kThreshMult, solver, &rng, &m_init);
 
     double score = std::numeric_limits<double>::max();
     ScoreModel(solver, m_init, kSqInThresh, &score);
-    UpdateBestModel(score, m_init, score_refined_model, refined_model);
+    UpdateBestModel(score, m_init, score_best_minimal_model,
+                    best_minimal_model);
 
     std::vector<int> inliers_base;
     int num_inliers_base =
@@ -344,7 +392,8 @@ class LocallyOptimizedMSAC : public RansacBase {
       if (!solver.NonMinimalSolver(sample, &m_non_min)) continue;
 
       ScoreModel(solver, m_non_min, kSqInThresh, &score);
-      UpdateBestModel(score, m_non_min, score_refined_model, refined_model);
+      UpdateBestModel(score, m_non_min, score_best_minimal_model,
+                      best_minimal_model);
 
       // Iterative least squares refinement.
       LeastSquaresFit(options, kSqInThresh, solver, &rng, &m_non_min);
@@ -358,7 +407,8 @@ class LocallyOptimizedMSAC : public RansacBase {
         LeastSquaresFit(options, thresh, solver, &rng, &m_non_min);
 
         ScoreModel(solver, m_non_min, kSqInThresh, &score);
-        UpdateBestModel(score, m_non_min, score_refined_model, refined_model);
+        UpdateBestModel(score, m_non_min, score_best_minimal_model,
+                        best_minimal_model);
         thresh -= thresh_mult_update;
       }
     }
