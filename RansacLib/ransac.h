@@ -90,6 +90,7 @@ struct RansacStatistics {
   double best_model_score;
   double inlier_ratio;
   std::vector<int> inlier_indices;
+  int number_lo_iterations;
 };
 
 class RansacBase {
@@ -101,6 +102,7 @@ class RansacBase {
     stats.num_iterations = 0u;
     stats.inlier_ratio = 0.0;
     stats.inlier_indices.clear();
+    stats.number_lo_iterations = 0;
   }
 
   // Computes the number of RANSAC iterations required for a given inlier
@@ -187,6 +189,7 @@ class LocallyOptimizedMSAC : public RansacBase {
 
       // Updates the best model found so far.
       if (best_local_score < best_min_model_score) {
+        ++stats.number_lo_iterations;
         // New best model (estimated from inliers found. Stores this model
         // and runs local optimization.
         best_min_model_score = best_local_score;
