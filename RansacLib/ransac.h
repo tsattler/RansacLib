@@ -69,7 +69,8 @@ class LORansacOptions : public RansacOptions {
         num_lsq_iterations_(4),
         min_sample_multiplicator_(7),
         non_min_sample_multiplier_(3),
-        lo_starting_iterations_(50u) {}
+        lo_starting_iterations_(50u),
+        final_least_squares_(false) {}
   int num_lo_steps_;
   double threshold_multiplier_;
   int num_lsq_iterations_;
@@ -87,6 +88,7 @@ class LORansacOptions : public RansacOptions {
   // performed after the first K_start iterations (set to 50 by Lebeda et al.)
   // to reduce overhead.
   uint32_t lo_starting_iterations_;
+  bool final_least_squares_;
 };
 
 struct RansacStatistics {
@@ -268,11 +270,27 @@ class LocallyOptimizedMSAC : public RansacBase {
       ++stats.number_lo_iterations;
       LocalOptimization(options, solver, best_model, &(stats.best_model_score));
 
-      // Updates the number of RANSAC iterations.
       stats.best_num_inliers = GetInliers(solver, *best_model, kSqrInlierThresh,
                                           &(stats.inlier_indices));
       stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
                            static_cast<double>(kNumData);
+    }
+
+    if (option.final_least_squares_) {
+      Model refined_model = *best_model;
+      LeastSquaresFit(options, kSqInThresh, solver, &rng, &refined_model);
+
+      double score = std::numeric_limits<double>::max();
+      ScoreModel(solver, refined_model, kSqInThresh, &score);
+      if (score < stats.best_model_score) {
+        stats.best_model_score = score;
+        *best_model = refined_model;
+
+        stats.best_num_inliers = GetInliers(
+            solver, *best_model, kSqrInlierThresh, &(stats.inlier_indices));
+        stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
+                             static_cast<double>(kNumData);
+      }
     }
 
     return stats.best_num_inliers;

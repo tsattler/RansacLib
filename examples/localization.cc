@@ -122,7 +122,7 @@ bool LoadMatches(const std::string& filename,
     Eigen::Vector2d p2D;
     Eigen::Vector3d p3D;
     s_stream >> p2D[0] >> p2D[1] >> p3D[0] >> p3D[1] >> p3D[2];
-    
+
     p3D[1] *= -1.0;
     p3D[2] *= -1.0;
 
@@ -141,8 +141,8 @@ int main(int argc, char** argv) {
   using ransac_lib::calibrated_absolute_pose::Points2D;
   using ransac_lib::calibrated_absolute_pose::Points3D;
 
-  std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile"
-            << std::endl;
+  std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
+            << "[match-file postfix]" << std::endl;
   if (argc < 3) return -1;
 
   std::vector<QueryData> query_data;
@@ -161,13 +161,17 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  std::string matchfile_postfix = ".individual_datasets.matches.txt";
+  if (argc >= 4) {
+    matchfile_postfix = std::string(argv[3]);
+  }
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
-    
+
     Points2D points2D;
     Points3D points3D;
     std::string matchfile(query_data[i].name);
-    matchfile.append(".individual_datasets.matches.txt");
+    matchfile.append(matchfile_postfix);
     if (!LoadMatches(matchfile, &points2D, &points3D)) {
       std::cerr << "  ERROR: Could not load matches from " << matchfile
                 << std::endl;
@@ -187,11 +191,12 @@ int main(int argc, char** argv) {
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
     ransac_lib::LORansacOptions options;
-    options.min_num_iterations_ = 100u;
+    options.min_num_iterations_ = 20u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
+    options.lo_starting_iterations_ = 20;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
@@ -225,14 +230,14 @@ int main(int argc, char** argv) {
               << std::endl;
     std::cout << "   ... LOMSAC executed " << ransac_stats.number_lo_iterations
               << " local optimization stages" << std::endl;
-    
-//    if (num_ransac_inliers < 12) continue;
-    
+
+    //    if (num_ransac_inliers < 12) continue;
+
     Eigen::Matrix3d R = best_model.topLeftCorner<3, 3>();
     Eigen::Vector3d t = -R * best_model.col(3);
     Eigen::Quaterniond q(R);
     q.normalize();
-    
+
     ofs << query_data[i].name << " " << q.w() << " " << q.x() << " " << q.y()
         << " " << q.z() << " " << t[0] << " " << t[1] << " " << t[2]
         << std::endl;
