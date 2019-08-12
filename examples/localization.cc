@@ -197,6 +197,7 @@ int main(int argc, char** argv) {
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
     options.lo_starting_iterations_ = 20;
+    options.final_least_squares_ = false;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();

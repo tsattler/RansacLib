@@ -276,12 +276,12 @@ class LocallyOptimizedMSAC : public RansacBase {
                            static_cast<double>(kNumData);
     }
 
-    if (option.final_least_squares_) {
+    if (options.final_least_squares_) {
       Model refined_model = *best_model;
-      LeastSquaresFit(options, kSqInThresh, solver, &rng, &refined_model);
+      solver.LeastSquares(stats.inlier_indices, &refined_model);
 
       double score = std::numeric_limits<double>::max();
-      ScoreModel(solver, refined_model, kSqInThresh, &score);
+      ScoreModel(solver, refined_model, kSqrInlierThresh, &score);
       if (score < stats.best_model_score) {
         stats.best_model_score = score;
         *best_model = refined_model;
