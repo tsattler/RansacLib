@@ -141,4 +141,4 @@ Contributions to RansacLib, e.g., bug reports, improvements, or bug fixes, are v
 When contributing, please adhere to [Google's C++ Style Guide](https://google.github.io/styleguide/cppguide.html).
 
 ## List of Projects using RansacLib
-
+* Active Search v1.1 uses RansacLib instead of its original RANSAC implementation. Code for Active Search will become available [here](https://github.com/tsattler/vps).
