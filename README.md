@@ -103,6 +103,8 @@ class MySolver {
 ## License
 RansacLib is licensed under the BSD 3-Clause license. Please see [License](https://github.com/tsattler/RansacLib/blob/master/LICENSE) for details.
 
+If you are using RansacLib, please consider adding the name of your project / company (and a link to your / your project's webpage) to the list of projects using RansacLib below.
+
 ## Citing
 If you are using the library for (scientific) publications, please cite the following source:
 ```
@@ -137,3 +139,6 @@ Please cite also the original publications of the different methods:
 Contributions to RansacLib, e.g., bug reports, improvements, or bug fixes, are very welcome. Please use Github's issues and pull request functionality to contribute. 
 
 When contributing, please adhere to [Google's C++ Style Guide](https://google.github.io/styleguide/cppguide.html).
+
+## List of Projects using RansacLib
+
