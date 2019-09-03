@@ -26,6 +26,7 @@ Other examples provides in `examples/` are used for internal testing and can be 
 There are currently two dependencies:
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 * [OpenGV](https://github.com/laurentkneip/opengv)
+* [Ceres Solver](http://ceres-solver.org/)
 
 **Important**: Eigen requires alignment of [certain types](https://eigen.tuxfamily.org/dox-devel/group__TopicFixedSizeVectorizable.html) when vectorization is used. OpenGV uses vectorization to accelerate some computations. As such, it is critical to compile the examples that depend on OpenGV with exactly the same optimization flags as OpenGV. This should be ensured at the moment for Unix-based systems (Linux, Mac OS X), but we did not test it under Windows. If you are experiencing problems at run-time or during compilation, please compare `examples/CMakeLists.txt` with `opengv/CMakeLists.txt` and if nessecary add additional flags to `examples/CMakeLists.txt`.
 
