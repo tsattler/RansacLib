@@ -242,11 +242,12 @@ class LocallyOptimizedMSAC : public RansacBase {
         // best_min_model_score holds.
         if (kRunLO) {
           ++stats.number_lo_iterations;
+          double score = best_min_model_score;
           LocalOptimization(options, solver, &best_minimal_model,
-                            &best_min_model_score);
+                            &score);
 
           // Updates the best model.
-          UpdateBestModel(best_min_model_score, best_minimal_model,
+          UpdateBestModel(score, best_minimal_model,
                           &(stats.best_model_score), best_model);
         }
 

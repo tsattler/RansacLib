@@ -101,7 +101,7 @@ class CalibratedAbsolutePoseEstimator {
   // Implemented by a simple linear least squares solver.
   int NonMinimalSolver(const std::vector<int>& sample, CameraPose* pose) const;
 
-  // Evaluates the line on the i-th data point.
+  // Evaluates the pose on the i-th data point.
   double EvaluateModelOnPoint(const CameraPose& pose, int i) const;
 
   // Linear least squares solver. Calls NonMinimalSolver.

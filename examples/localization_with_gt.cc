@@ -51,7 +51,27 @@
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
 
+template <typename T>
+double ComputeMedian(std::vector<T>* data) {
+  T mean = static_cast<T>(0.0);
+  for (size_t i = 0; i < data->size(); ++i) {
+    mean += (*data)[i];
+  }
+  mean /= static_cast<T>(data->size());
+  std::cout << " mean : " << mean << std::endl;
+
+  std::sort(data->begin(), data->end());
+  if (data->size() % 2u == 1u) {
+    return static_cast<double>((*data)[data->size() / 2]);
+  } else {
+    double a = static_cast<double>((*data)[data->size() / 2 - 1]);
+    double b = static_cast<double>((*data)[data->size() / 2]);
+    return (a + b) * 0.5;
+  }
+}
+
 struct QueryData {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   std::string name;
   double c_x;
   double c_y;
@@ -62,12 +82,17 @@ struct QueryData {
   int width;
   int height;
 
+  Eigen::Quaterniond q;
+  Eigen::Vector3d c;
+
   std::vector<double> radial;
 };
 
-// Loads the list of query images together with their intrinsics.
-bool LoadListAndFocals(const std::string& filename,
-                       std::vector<QueryData>* query_images) {
+typedef std::vector<QueryData, Eigen::aligned_allocator<QueryData>> Queries;
+
+// Loads the list of query images together with their intrinsics and extrinsics.
+bool LoadListIntrinsicsAndExtrinsics(const std::string& filename,
+                                     Queries* query_images) {
   std::ifstream ifs(filename.c_str(), std::ios::in);
   if (!ifs.is_open()) {
     std::cerr << " ERROR: Cannot read the image list from " << filename
@@ -85,15 +110,17 @@ bool LoadListAndFocals(const std::string& filename,
 
     QueryData q;
     s_stream >> q.name >> camera_type >> q.width >> q.height;
-    if (camera_type.compare("SIMPLE_RADIAL") == 0) {
+    if (camera_type.compare("SIMPLE_RADIAL") == 0 ||
+        camera_type.compare("VSFM") == 0) {
       q.radial.resize(1);
       s_stream >> q.focal_x >> q.c_x >> q.c_y >> q.radial[0];
       q.focal_y = q.focal_x;
     } else if (camera_type.compare("PINHOLE") == 0) {
       q.radial.clear();
       s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y;
-      q.focal_y = q.focal_x;
     }
+    s_stream >> q.q.w() >> q.q.x() >> q.q.y() >> q.q.z() >> q.c[0] >> q.c[1] >>
+        q.c[2];
     query_images->push_back(q);
   }
 
@@ -146,10 +173,10 @@ int main(int argc, char** argv) {
             << "[match-file postfix]" << std::endl;
   if (argc < 3) return -1;
 
-  std::vector<QueryData> query_data;
+  Queries query_data;
   std::string list(argv[1]);
 
-  if (!LoadListAndFocals(list, &query_data)) {
+  if (!LoadListIntrinsicsAndExtrinsics(list, &query_data)) {
     std::cerr << " ERROR: Could not read the data from " << list << std::endl;
     return -1;
   }
@@ -166,6 +193,13 @@ int main(int argc, char** argv) {
   if (argc >= 4) {
     matchfile_postfix = std::string(argv[3]);
   }
+
+  std::vector<double> orientation_error(kNumQuery,
+                                        std::numeric_limits<double>::max());
+  std::vector<double> position_error(kNumQuery,
+                                     std::numeric_limits<double>::max());
+  int num_poses_within_threshold = 0;
+
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
 
@@ -179,11 +213,10 @@ int main(int argc, char** argv) {
       continue;
     }
     const int kNumMatches = static_cast<int>(points2D.size());
-    std::cout << " image " << query_data[i].name << " has # " << kNumMatches
-              << " matches as input to RANSAC" << std::endl;
-    if (kNumMatches <= 3) {
+    if (kNumMatches <= 4) {
       std::cout << " Found only " << kNumMatches << " matches for query image "
                 << query_data[i].name << " -> skipping image" << std::endl;
+
       continue;
     }
     std::cout << "  " << i << " " << query_data[i].name << " "
@@ -194,18 +227,18 @@ int main(int argc, char** argv) {
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
     ransac_lib::LORansacOptions options;
-    options.min_num_iterations_ = 20u;
+    options.min_num_iterations_ = 200u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
     options.lo_starting_iterations_ = 20;
-    options.final_least_squares_ = false;
+    options.final_least_squares_ = true;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
 
-    const double kInThreshPX = 5.0;
+    const double kInThreshPX = 20.0;
     options.squared_inlier_threshold_ = kInThreshPX * kInThreshPX;
 
     CalibratedAbsolutePoseEstimator solver(
@@ -235,20 +268,43 @@ int main(int argc, char** argv) {
     std::cout << "   ... LOMSAC executed " << ransac_stats.number_lo_iterations
               << " local optimization stages" << std::endl;
 
-    std::cout << "  Image " << query_data[i].name << " : we found # "
-              << num_ransac_inliers << " inliers" << std::endl;
-
-    //    if (num_ransac_inliers < 12) continue;
+    if (num_ransac_inliers < 12) continue;
 
     Eigen::Matrix3d R = best_model.topLeftCorner<3, 3>();
     Eigen::Vector3d t = -R * best_model.col(3);
     Eigen::Quaterniond q(R);
     q.normalize();
 
+    // Measures the pose error.
+    double c_error = (best_model.col(3) - query_data[i].c).norm();
+    Eigen::Matrix3d R1 = R.transpose();
+    Eigen::Matrix3d R2(query_data[i].q);
+    Eigen::AngleAxisd aax(R1 * R2);
+    double q_error = aax.angle() * 180.0 / M_PI;
+    orientation_error[i] = q_error;
+    position_error[i] = c_error;
+
+    if (c_error < 0.25 && q_error < 2.0) {
+      ++num_poses_within_threshold;
+    }
+
     ofs << query_data[i].name << " " << q.w() << " " << q.x() << " " << q.y()
         << " " << q.z() << " " << t[0] << " " << t[1] << " " << t[2]
         << std::endl;
   }
+
+  std::sort(orientation_error.begin(), orientation_error.end());
+  std::sort(position_error.begin(), position_error.end());
+
+  double median_pos = ComputeMedian<double>(&position_error);
+  double median_rot = ComputeMedian<double>(&orientation_error);
+  std::cout << " Median position error: " << median_pos << "m "
+            << " Median orientation error: " << median_rot << " deg"
+            << std::endl;
+  std::cout << " % images within 25cm and 2deg: "
+            << static_cast<double>(num_poses_within_threshold) /
+                   static_cast<double>(kNumQuery) * 100.0
+            << std::endl;
 
   ofs.close();
   return 0;

@@ -92,7 +92,6 @@ bool LoadListAndFocals(const std::string& filename,
     } else if (camera_type.compare("PINHOLE") == 0) {
       q.radial.clear();
       s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y;
-      q.focal_y = q.focal_x;
     }
     query_images->push_back(q);
   }
@@ -179,9 +178,7 @@ int main(int argc, char** argv) {
       continue;
     }
     const int kNumMatches = static_cast<int>(points2D.size());
-    std::cout << " image " << query_data[i].name << " has # " << kNumMatches
-              << " matches as input to RANSAC" << std::endl;
-    if (kNumMatches <= 3) {
+    if (kNumMatches <= 11) {
       std::cout << " Found only " << kNumMatches << " matches for query image "
                 << query_data[i].name << " -> skipping image" << std::endl;
       continue;
@@ -235,10 +232,7 @@ int main(int argc, char** argv) {
     std::cout << "   ... LOMSAC executed " << ransac_stats.number_lo_iterations
               << " local optimization stages" << std::endl;
 
-    std::cout << "  Image " << query_data[i].name << " : we found # "
-              << num_ransac_inliers << " inliers" << std::endl;
-
-    //    if (num_ransac_inliers < 12) continue;
+    if (num_ransac_inliers < 12) continue;
 
     Eigen::Matrix3d R = best_model.topLeftCorner<3, 3>();
     Eigen::Vector3d t = -R * best_model.col(3);
