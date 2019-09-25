@@ -42,8 +42,7 @@ GeneralizedCalibratedAbsolutePoseEstimator::
     GeneralizedCalibratedAbsolutePoseEstimator(
         const MultiCameraRig& rig, const double squared_inlier_threshold,
         const Points2D& points2D, const ViewingRays& rays,
-        const Points3D& points3D, const std::vector<int>& camera_indices,
-        const CameraPositions& positions, const CameraRotations& rotations)
+        const Points3D& points3D, const std::vector<int>& camera_indices)
     : rig_(rig),
       squared_inlier_threshold_(squared_inlier_threshold),
       points2D_(points2D),
@@ -51,12 +50,11 @@ GeneralizedCalibratedAbsolutePoseEstimator::
       camera_indices_(camera_indices),
       adapter_(rays, camera_indices, points3D, positions, rotations) {
   num_data_ = static_cast<int>(points2D_.size());
+        
+  rig_.absolute_pose.topLeftCorner<3, 3>() = Matrix3d::Identity();
+  rig_.absolute_pose.col(3) = Vector3d::Zeros();
 
   num_cameras_ = static_cast<int>(rig.size());
-  for (int i = 0; i < num_cameras_; ++i) {
-    rig_[i].pose.topLeftCorner<3, 3>() = rotations[i].transpose();
-    rig_[i].pose.col(3) = positions[i];
-  }
 }
 
 int GeneralizedCalibratedAbsolutePoseEstimator::MinimalSolver(

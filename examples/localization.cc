@@ -194,12 +194,12 @@ int main(int argc, char** argv) {
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
     ransac_lib::LORansacOptions options;
-    options.min_num_iterations_ = 20u;
+    options.min_num_iterations_ = 200u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
-    options.lo_starting_iterations_ = 20;
+    options.lo_starting_iterations_ = 10;
     options.final_least_squares_ = false;
 
     std::random_device rand_dev;
