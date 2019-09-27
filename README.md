@@ -46,7 +46,6 @@ The `Solver` class implements all functionality to estimate and evaluate minimal
 ```
 class MySolver {
  public:
-  // OpenGV's EPnP implementation asserts that there are at least 6 matches as
   // Returns the number of data points required by a minimal solver.
   int min_sample_size() const;
   
