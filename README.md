@@ -142,3 +142,4 @@ When contributing, please adhere to [Google's C++ Style Guide](https://google.gi
 
 ## List of Projects using RansacLib
 * Active Search v1.1 uses RansacLib instead of its original RANSAC implementation. Code for Active Search will become available [here](https://github.com/tsattler/vps).
+* [radialpose](https://github.com/vlarsson/radialpose) is an implementation of minimal solvers for absolute camera pose estimation for images with radial distortion.
