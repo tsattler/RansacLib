@@ -138,22 +138,15 @@ class GeneralizedCalibratedAbsolutePoseEstimator {
                        MultiCameraRig* pose) const;
 
   // Evaluates the model on the i-th data point.
-  inline double EvaluateModelOnPoint(const MultiCameraRig& pose, int i) const {
-    return EvaluateModelOnPoint(pose[camera_indices_[i]], i);
-  }
+  double EvaluateModelOnPoint(const MultiCameraRig& pose, int i) const;
 
   // Linear least squares solver. Calls NonMinimalSolver.
   void LeastSquares(const std::vector<int>& sample, MultiCameraRig* pose) const;
 
  protected:
-  // Helper function to evaluate a point on a single camera.
-  double EvaluateModelOnPoint(const Camera& camera, int i) const;
-
   // Given the pose estimated by OpenGV, creates a multi-camera rig that
   // contains the absolute pose of each camera (in the form [R, c]).
   void AssembleRig(const CameraPose& pose, MultiCameraRig* rig) const;
-  void AssemblePose(const CameraPose& pose, const int cam_id,
-                    CameraPose* new_pose) const;
 
   MultiCameraRig rig_;
   double squared_inlier_threshold_;

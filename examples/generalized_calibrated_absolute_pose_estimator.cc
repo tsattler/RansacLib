@@ -63,13 +63,10 @@ int GeneralizedCalibratedAbsolutePoseEstimator::MinimalSolver(
   CameraPoses gp3p_poses = opengv::absolute_pose::gp3p(adapter_, sample);
   if (p3p_poses.empty()) return 0;
   for (const CameraPose& pose : gp3p_poses) {
-    const int kCameraId = camera_indices_[sample[3]];
-    Camera cam = rig_[kCameraId];
-    AssemblePose(pose, kCameraId, &(cam.pose));
-    const double kError = EvaluateModelOnPoint(cam, sample[3]);
+    MultiCameraRig rig;
+    AssembleRig(pose, &rig);
+    const double kError = EvaluateModelOnPoint(rig, sample[3]);
     if (kError < squared_inlier_threshold_) {
-      MultiCameraRig rig;
-      AssembleRig(pose, &rig);
       poses->push_back(rig);
       // At most one pose should be correct.
       break;
@@ -86,6 +83,26 @@ int GeneralizedCalibratedAbsolutePoseEstimator::NonMinimalSolver(
   CameraPose P = opengv::absolute_pose::gpnp(adapter_, sample);
   AssembleRig(P, pose);
   return 1;
+}
+  
+double GeneralizedCalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
+    const MultiCameraRig& pose, int i) const {
+  // Transforms into the coordinate system of the rig.
+  Vector3d p_r =
+      camera.pose.topLeftCorner<3, 3>() * (points3D_[i] - camera.pose.col(3));
+    
+  // Transforms into the coordinate system of the camera.
+  const CameraPose& cam_pose = rig_.cameras[camera_indices_[i]].cam_pose;
+  Vector3d p_c = cam_pose.topLeftCorner<3, 3>() * (p_r - cam_pose.col(3));
+    
+  // Check whether point projects behind the camera.
+  if (p_c[2] < 0.0) return std::numeric_limits<double>::max();
+    
+  Eigen::Vector2d p_2d = p_c.head<2>() / p_c[2];
+  p_2d[0] *= camera.focal_x;
+  p_2d[1] *= camera.focal_y;
+    
+  return (p_2d - points2D_[i]).squaredNorm();
 }
 
 void GeneralizedCalibratedAbsolutePoseEstimator::LeastSquares(
@@ -124,45 +141,12 @@ void GeneralizedCalibratedAbsolutePoseEstimator::LeastSquares(
   AssembleRig(P, pose);
 }
 
-double GeneralizedCalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
-    const Camera& camera, int i) const {
-  Eigen::Vector3d p_c =
-      camera.pose.topLeftCorner<3, 3>() * (points3D_[i] - camera.pose.col(3));
-
-  // Check whether point projects behind the camera.
-  if (p_c[2] < 0.0) return std::numeric_limits<double>::max();
-
-  Eigen::Vector2d p_2d = p_c.head<2>() / p_c[2];
-  p_2d[0] *= camera.focal_x;
-  p_2d[1] *= camera.focal_y;
-
-  return (p_2d - points2D_[i]).squaredNorm();
-}
-
 void GeneralizedCalibratedAbsolutePoseEstimator::AssembleRig(
     const CameraPose& pose, MultiCameraRig* rig) const {
   *rig = rig_;
-  for (int i = 0; i < num_cameras_; ++i) {
-    CameraPose new_pose;
-    AssemblePose(pose, i, &new_pose);
-    (*rig)[i].pose = new_pose;
-  }
   *rig->global_pose.topLeftCorner<3, 3>() =
       pose.topLeftCorner<3, 3>().transpose();
   *rig->global_pose.col(3) = pose.col(3);
-}
-
-void GeneralizedCalibratedAbsolutePoseEstimator::AssemblePose(
-    const CameraPose& pose, const int cam_id, CameraPose* new_pose) const {
-  // OpenGV returns the transformation from the camera to the world coordinate
-  // system. We store the rotation from the world to the local coordinate
-  // system instead.
-  const Matrix3d kRAbs = pose.topLeftCorner<3, 3>().transpose();
-  const Matrix3d& kRRel = rig_[i].topLeftCorner<3, 3>();
-  new_pose->topLeftCorner<3, 3>() = kRRel * kRAbs;
-
-  new_pose->col(3) =
-      pose.col(3) + pose.topLeftCorner<3, 3>() * rig_[i].pose.col(3);
 }
 
 }  // namespace generalized_calibrated_absolute_pose
