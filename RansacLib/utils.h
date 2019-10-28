@@ -45,7 +45,7 @@ namespace utils {
 // This function implements Fisher-Yates shuffling, implemented "manually"
 // here following: https://lemire.me/blog/2016/10/10/a-case-study-in-the-
 // performance-cost-of-abstraction-cs-stdshuffle/
-void RandomShuffle(std::mt19937* rng, std::vector<int>* random_sample) {
+inline void RandomShuffle(std::mt19937* rng, std::vector<int>* random_sample) {
   std::vector<int>& sample = *random_sample;
   const int kNumElements = static_cast<int>(sample.size());
   for (int i = 0; i < (kNumElements - 1); ++i) {
@@ -55,7 +55,7 @@ void RandomShuffle(std::mt19937* rng, std::vector<int>* random_sample) {
   }
 }
 
-void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
+inline void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
                             std::vector<int>* random_sample) {
   RandomShuffle(rng, random_sample);
   random_sample->resize(target_size);

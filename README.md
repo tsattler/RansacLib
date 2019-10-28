@@ -46,7 +46,6 @@ The `Solver` class implements all functionality to estimate and evaluate minimal
 ```
 class MySolver {
  public:
-  // OpenGV's EPnP implementation asserts that there are at least 6 matches as
   // Returns the number of data points required by a minimal solver.
   int min_sample_size() const;
   
@@ -143,3 +142,4 @@ When contributing, please adhere to [Google's C++ Style Guide](https://google.gi
 
 ## List of Projects using RansacLib
 * Active Search v1.1 uses RansacLib instead of its original RANSAC implementation. Code for Active Search will become available [here](https://github.com/tsattler/vps).
+* [radialpose](https://github.com/vlarsson/radialpose) is an implementation of minimal solvers for absolute camera pose estimation for images with radial distortion.

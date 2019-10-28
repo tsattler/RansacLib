@@ -124,6 +124,7 @@ bool LoadMatches(const std::string& filename,
     Eigen::Vector3d p3D;
     s_stream >> p2D[0] >> p2D[1] >> p3D[0] >> p3D[1] >> p3D[2];
 
+    // Inverting the y- and z-coordinate due to my choice of coordinate system.
     p3D[1] *= -1.0;
     p3D[2] *= -1.0;
 
