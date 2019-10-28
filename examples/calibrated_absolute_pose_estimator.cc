@@ -121,8 +121,8 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
     P.topLeftCorner<3, 3>() = pose.topLeftCorner<3, 3>().transpose();
     const double kError = EvaluateModelOnPoint(P, sample[3]);
     if (kError < squared_inlier_threshold_) {
-//      // Refine using all four points.
-//      LeastSquares(sample, &P);
+      //      // Refine using all four points.
+      //      LeastSquares(sample, &P);
       poses->push_back(P);
       // At most one pose should be correct.
       break;

@@ -42,7 +42,8 @@ GeneralizedCalibratedAbsolutePoseEstimator::
     GeneralizedCalibratedAbsolutePoseEstimator(
         const MultiCameraRig& rig, const double squared_inlier_threshold,
         const Points2D& points2D, const ViewingRays& rays,
-        const Points3D& points3D, const std::vector<int>& camera_indices)
+        const Points3D& points3D, const std::vector<int>& camera_indices,
+        const CameraPositions& positions, const CameraRotations& rotations)
     : rig_(rig),
       squared_inlier_threshold_(squared_inlier_threshold),
       points2D_(points2D),
@@ -50,11 +51,15 @@ GeneralizedCalibratedAbsolutePoseEstimator::
       camera_indices_(camera_indices),
       adapter_(rays, camera_indices, points3D, positions, rotations) {
   num_data_ = static_cast<int>(points2D_.size());
-        
+
   rig_.absolute_pose.topLeftCorner<3, 3>() = Matrix3d::Identity();
   rig_.absolute_pose.col(3) = Vector3d::Zeros();
 
   num_cameras_ = static_cast<int>(rig.size());
+  for (int i = 0; i < num_cameras_; ++i) {
+    rig_[i].pose.topLeftCorner<3, 3>() = rotations[i].transpose();
+    rig_[i].pose.col(3) = positions[i];
+  }
 }
 
 int GeneralizedCalibratedAbsolutePoseEstimator::MinimalSolver(
@@ -84,24 +89,24 @@ int GeneralizedCalibratedAbsolutePoseEstimator::NonMinimalSolver(
   AssembleRig(P, pose);
   return 1;
 }
-  
+
 double GeneralizedCalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
     const MultiCameraRig& pose, int i) const {
   // Transforms into the coordinate system of the rig.
   Vector3d p_r =
       camera.pose.topLeftCorner<3, 3>() * (points3D_[i] - camera.pose.col(3));
-    
+
   // Transforms into the coordinate system of the camera.
-  const CameraPose& cam_pose = rig_.cameras[camera_indices_[i]].cam_pose;
-  Vector3d p_c = cam_pose.topLeftCorner<3, 3>() * (p_r - cam_pose.col(3));
-    
+  const Camera& cam = rig_.cameras[camera_indices_[i]];
+  Vector3d p_c = cam.pose.topLeftCorner<3, 3>() * (p_r - cam.pose.col(3));
+
   // Check whether point projects behind the camera.
   if (p_c[2] < 0.0) return std::numeric_limits<double>::max();
-    
+
   Eigen::Vector2d p_2d = p_c.head<2>() / p_c[2];
-  p_2d[0] *= camera.focal_x;
-  p_2d[1] *= camera.focal_y;
-    
+  p_2d[0] *= cam.focal_x;
+  p_2d[1] *= cam.focal_y;
+
   return (p_2d - points2D_[i]).squaredNorm();
 }
 

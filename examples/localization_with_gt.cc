@@ -182,16 +182,16 @@ int main(int argc, char** argv) {
   }
   const int kNumQuery = static_cast<int>(query_data.size());
   std::cout << " Found " << kNumQuery << " query images " << std::endl;
-  
-  double mean_focal  = 0.0;
+
+  double mean_focal = 0.0;
   for (int i = 0; i < kNumQuery; ++i) {
     mean_focal += query_data[i].focal_x;
   }
   mean_focal /= static_cast<double>(kNumQuery);
-//  for (int i = 0; i < kNumQuery; ++i) {
-//    query_data[i].focal_x = mean_focal;
-//    query_data[i].focal_y = mean_focal;
-//  }
+  //  for (int i = 0; i < kNumQuery; ++i) {
+  //    query_data[i].focal_x = mean_focal;
+  //    query_data[i].focal_y = mean_focal;
+  //  }
 
   std::ofstream ofs(argv[2], std::ios::out);
   if (!ofs.is_open()) {
@@ -209,12 +209,12 @@ int main(int argc, char** argv) {
   std::vector<double> position_error(kNumQuery,
                                      std::numeric_limits<double>::max());
   int num_poses_within_threshold = 0;
-  
+
   const double kPosThresh = 0.05;
   const double kOrientThresh = 5.0;
 
   double mean_ransac_time = 0.0;
-  
+
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
 
@@ -245,13 +245,13 @@ int main(int argc, char** argv) {
     options.min_num_iterations_ = 100u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
-//    options.num_lsq_iterations_ = 0;
-//    options.num_lo_steps_ = 0;
+    //    options.num_lsq_iterations_ = 0;
+    //    options.num_lo_steps_ = 0;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 5;
     options.lo_starting_iterations_ = 20;
     options.final_least_squares_ = true;
-//    options.threshold_multiplier_ = 2.0;
+    //    options.threshold_multiplier_ = 2.0;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
@@ -288,7 +288,7 @@ int main(int argc, char** argv) {
               << " local optimization stages" << std::endl;
 
     if (num_ransac_inliers < 12) continue;
-//    if (num_ransac_inliers < 4) continue;
+    //    if (num_ransac_inliers < 4) continue;
 
     Eigen::Matrix3d R = best_model.topLeftCorner<3, 3>();
     Eigen::Vector3d t = -R * best_model.col(3);
@@ -315,10 +315,11 @@ int main(int argc, char** argv) {
 
   std::sort(orientation_error.begin(), orientation_error.end());
   std::sort(position_error.begin(), position_error.end());
-  
-  std::cout << std::endl << " Mean RANSAC time: "
-            << mean_ransac_time / static_cast<double>(kNumQuery)
-            << " s " << std::endl;
+
+  std::cout << std::endl
+            << " Mean RANSAC time: "
+            << mean_ransac_time / static_cast<double>(kNumQuery) << " s "
+            << std::endl;
 
   double median_pos = ComputeMedian<double>(&position_error);
   double median_rot = ComputeMedian<double>(&orientation_error);

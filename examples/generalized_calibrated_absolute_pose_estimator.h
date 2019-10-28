@@ -109,17 +109,22 @@ class GeneralizedCalibratedAbsolutePoseEstimator {
   // of the point in its corresponding camera), and the camera index for each
   // match. The 2D points are expected to be centered around the principal point
   // (i.e., the principal has already been subtracted) and to be undistorted.
-  // Both the rig intrinsics and extrinsics are used. For the extrinsics, the
-  // pose of each camera defines the transformation from the local camera
-  // coordinate system into the coordinate system of the rig (as per OpenGV
-  // conventions).
+  // The poses of the cameras in the multi-camera rig are defined by the input
+  // parameters positions and rotations. positions stores the camera centers in
+  // the rig coordinate system while rotations stores the rotations from the
+  // local camera coordinates to the rig coordinate system (as per OpenGV
+  // convention). From the input rig, only the intrinsics are used. The
+  // constructor updates the extrinsics of the rig cameras such that they store
+  // the camera center in rig coordinates and the rotation from rig coordinates
+  // to local camera coordinates.
   // In addition, the squared inlier threshold used by *SAC is required as
   // input. It is used to pick at most one of the up to 4 solutions created by
   // the GP3P solver.
   GeneralizedCalibratedAbsolutePoseEstimator(
       const MultiCameraRig& rig, const double squared_inlier_threshold,
       const Points2D& points2D, const ViewingRays& rays,
-      const Points3D& points3D, const std::vector<int>& camera_indices);
+      const Points3D& points3D, const std::vector<int>& camera_indices,
+      const CameraPositions& positions, const CameraRotations& rotations);
 
   inline int min_sample_size() const { return 4; }
 
