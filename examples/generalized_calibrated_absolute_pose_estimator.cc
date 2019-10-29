@@ -52,13 +52,13 @@ GeneralizedCalibratedAbsolutePoseEstimator::
       adapter_(rays, camera_indices, points3D, positions, rotations) {
   num_data_ = static_cast<int>(points2D_.size());
 
-  rig_.absolute_pose.topLeftCorner<3, 3>() = Matrix3d::Identity();
-  rig_.absolute_pose.col(3) = Vector3d::Zeros();
+  rig_.global_pose.topLeftCorner<3, 3>() = Matrix3d::Identity();
+  rig_.global_pose.col(3) = Vector3d::Zero();
 
-  num_cameras_ = static_cast<int>(rig.size());
+  num_cameras_ = static_cast<int>(rig.cameras.size());
   for (int i = 0; i < num_cameras_; ++i) {
-    rig_[i].pose.topLeftCorner<3, 3>() = rotations[i].transpose();
-    rig_[i].pose.col(3) = positions[i];
+    rig_.cameras[i].pose.topLeftCorner<3, 3>() = rotations[i].transpose();
+    rig_.cameras[i].pose.col(3) = positions[i];
   }
 }
 
@@ -66,7 +66,7 @@ int GeneralizedCalibratedAbsolutePoseEstimator::MinimalSolver(
     const std::vector<int>& sample, MultiCameraRigs* poses) const {
   poses->clear();
   CameraPoses gp3p_poses = opengv::absolute_pose::gp3p(adapter_, sample);
-  if (p3p_poses.empty()) return 0;
+  if (gp3p_poses.empty()) return 0;
   for (const CameraPose& pose : gp3p_poses) {
     MultiCameraRig rig;
     AssembleRig(pose, &rig);
@@ -94,7 +94,8 @@ double GeneralizedCalibratedAbsolutePoseEstimator::EvaluateModelOnPoint(
     const MultiCameraRig& pose, int i) const {
   // Transforms into the coordinate system of the rig.
   Vector3d p_r =
-      camera.pose.topLeftCorner<3, 3>() * (points3D_[i] - camera.pose.col(3));
+      pose.global_pose.topLeftCorner<3, 3>() *
+          (points3D_[i] - pose.global_pose.col(3));
 
   // Transforms into the coordinate system of the camera.
   const Camera& cam = rig_.cameras[camera_indices_[i]];
@@ -134,8 +135,9 @@ void GeneralizedCalibratedAbsolutePoseEstimator::LeastSquares(
   opengv::translations_t camera_positions(num_cameras_);
   opengv::rotations_t camera_rotations(num_cameras_);
   for (int i = 0; i < num_cameras_; ++i) {
-    camera_positions[i] = rig_[i].pose.col(3);
-    camera_rotations[i] = rig_[i].pose.topLeftCorner<3, 3>().transpose();
+    camera_positions[i] = rig_.cameras[i].pose.col(3);
+    camera_rotations[i] =
+        rig_.cameras[i].pose.topLeftCorner<3, 3>().transpose();
   }
 
   opengv::absolute_pose::NoncentralAbsoluteAdapter lsq_adapter(
@@ -149,9 +151,9 @@ void GeneralizedCalibratedAbsolutePoseEstimator::LeastSquares(
 void GeneralizedCalibratedAbsolutePoseEstimator::AssembleRig(
     const CameraPose& pose, MultiCameraRig* rig) const {
   *rig = rig_;
-  *rig->global_pose.topLeftCorner<3, 3>() =
+  rig->global_pose.topLeftCorner<3, 3>() =
       pose.topLeftCorner<3, 3>().transpose();
-  *rig->global_pose.col(3) = pose.col(3);
+  rig->global_pose.col(3) = pose.col(3);
 }
 
 }  // namespace generalized_calibrated_absolute_pose

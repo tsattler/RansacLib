@@ -52,6 +52,7 @@ namespace ransac_lib {
 namespace generalized_calibrated_absolute_pose {
 using Eigen::aligned_allocator;
 using Eigen::Matrix3d;
+using Eigen::Vector2d;
 using Eigen::Vector3d;
 // An absolute pose is a Eigen 3x4 double matrix storing the rotation and
 // translation of the camera.
@@ -82,7 +83,7 @@ struct MultiCameraRig {
 typedef std::vector<MultiCameraRig, aligned_allocator<MultiCameraRig>>
     MultiCameraRigs;
 
-typedef std::vector<Eigen::Vector2d> Points2D;
+typedef std::vector<Vector2d, aligned_allocator<Vector2d>> Points2D;
 typedef std::vector<Vector3d, aligned_allocator<Vector3d>> Points3D;
 typedef std::vector<Vector3d, aligned_allocator<Vector3d>> ViewingRays;
 
