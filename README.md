@@ -23,7 +23,7 @@ We currently provide two examples:
 
 Other examples provides in `examples/` are used for internal testing and can be safely ignored.
 
-There are currently two dependencies:
+There are currently three dependencies:
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
 * [OpenGV](https://github.com/laurentkneip/opengv)
 * [Ceres Solver](http://ceres-solver.org/)
