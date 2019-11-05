@@ -22,7 +22,7 @@ include_directories (
 
 add_executable (line_estimation line_estimation.cc line_estimator.cc line_estimator.h)
 
-add_executable (hybrid_line_estimation hybrid_line_estimation.cc hybrid_line_estimator.cc hybrid_line_estimator.h line_estimator.cc line_estimator.h)
+add_executable (hybrid_line_estimation hybrid_line_estimation.cc hybrid_line_estimator.cc hybrid_line_estimator.h)
 
 add_executable (camera_pose_estimation camera_pose_estimation.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
 target_link_libraries (camera_pose_estimation opengv ${CERES_LIBRARIES})

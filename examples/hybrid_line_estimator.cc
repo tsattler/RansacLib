@@ -46,12 +46,13 @@
 namespace ransac_lib {
 
 HybridLineEstimator::HybridLineEstimator(
-    const Eigen::Matrix2Xd& points,
-    const Eigen::Matrix4Xd& points_with_normals) {
+    const Eigen::Matrix2Xd& points, const Eigen::Matrix4Xd& points_with_normals,
+    const std::vector<double>& prior_probabilities) {
   points_ = points;
   num_points_ = points_.cols();
   points_with_normals_ = points_with_normals;
   num_points_with_normals_ = points_with_normals_.cols();
+  prior_probabilities_ = prior_probabilities;
 }
 
 void HybridLineEstimator::LeastSquares(

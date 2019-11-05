@@ -51,7 +51,8 @@ namespace ransac_lib {
 class HybridLineEstimator {
  public:
   HybridLineEstimator(const Eigen::Matrix2Xd& points,
-                      const Eigen::Matrix4Xd& points_with_normals);
+                      const Eigen::Matrix4Xd& points_with_normals,
+                      const std::vector<double>& prior_probabilities);
 
   inline int num_minimal_solvers() const { return 2; }
 
@@ -70,12 +71,9 @@ class HybridLineEstimator {
     (*num_data)[1] = num_points_with_normals_;
   }
 
-  // Uniform prior probabilities.
   inline void solver_probabilities(
       std::vector<double>* solver_probabilites) const {
-    solver_probabilites->resize(2);
-    (*solver_probabilites)[0] = 0.5;
-    (*solver_probabilites)[1] = 0.5;
+    *solver_probabilites = prior_probabilities_;
   }
 
   inline int MinimalSolver(const std::vector<std::vector<int>>& sample,
@@ -105,6 +103,7 @@ class HybridLineEstimator {
   int num_points_;
   Eigen::Matrix4Xd points_with_normals_;
   int num_points_with_normals_;
+  std::vector<double> prior_probabilities_;
 };
 
 }  // namespace ransac_lib
