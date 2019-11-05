@@ -51,6 +51,7 @@ class HybridUniformSampling {
     rng_.seed(random_seed);
     num_data_types_ = static_cast<int>(num_data_.size());
 
+    uniform_dstr_.resize(num_data_types_);
     for (int i = 0; i < num_data_types_; ++i) {
       if (num_data_[i] < 2) continue;
       uniform_dstr_[i].param(

@@ -127,7 +127,7 @@ inline uint32_t NumRequiredIterations(const std::vector<double> inlier_ratios,
   const int kNumDataTypes = static_cast<int>(sample_sizes.size());
 
   double prob_all_inlier_sample = 1.0;
-  for (int i = 0; kNumDataTypes; ++i) {
+  for (int i = 0; i < kNumDataTypes; ++i) {
     prob_all_inlier_sample *=
         std::pow(inlier_ratios[i], static_cast<double>(sample_sizes[i]));
   }
