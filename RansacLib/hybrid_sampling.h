@@ -82,7 +82,7 @@ class HybridUniformSampling {
   void DrawSample(const std::vector<int>& num_samples_per_data_type,
                   const int data_type,
                   std::vector<std::vector<int>>* random_sample) {
-    std::vector<int>& sample = *random_sample;
+    std::vector<std::vector<int>>& sample = *random_sample;
     sample[data_type].resize(num_samples_per_data_type[data_type]);
     for (int i = 0; i < num_samples_per_data_type[data_type]; ++i) {
       bool found = true;
@@ -105,37 +105,36 @@ class HybridUniformSampling {
   void ShuffleSample(const std::vector<int>& num_samples_per_data_type,
                      const int data_type,
                      std::vector<std::vector<int>>* random_sample) {
-    (*random_sample)[data_type].resize(num_data_[i]);
+    (*random_sample)[data_type].resize(num_data_[data_type]);
     std::iota((*random_sample)[data_type].begin(),
               (*random_sample)[data_type].end(), 0);
     if (num_samples_per_data_type[data_type] == num_data_[data_type]) return;
 
     // Fisher-Yates shuffling.
     RandomShuffle(&((*random_sample)[data_type]));
-    (*random_sample)[data_type].resize(sample_size_);
+    (*random_sample)[data_type].resize(num_samples_per_data_type[data_type]);
   }
-}
 
   // This function implements Fisher-Yates shuffling, implemented "manually"
   // here following: https://lemire.me/blog/2016/10/10/a-case-study-in-the-
   // performance-cost-of-abstraction-cs-stdshuffle/
   void RandomShuffle(std::vector<int>* random_sample) {
-  std::vector<int>& sample = *random_sample;
-  const int kNumElements = static_cast<int>(sample.size());
-  for (int i = 0; i < (kNumElements - 1); ++i) {
-    std::uniform_int_distribution<int> dist(i, kNumElements - 1);
-    int idx = dist(rng_);
-    std::swap(sample[i], sample[idx]);
+    std::vector<int>& sample = *random_sample;
+    const int kNumElements = static_cast<int>(sample.size());
+    for (int i = 0; i < (kNumElements - 1); ++i) {
+      std::uniform_int_distribution<int> dist(i, kNumElements - 1);
+      int idx = dist(rng_);
+      std::swap(sample[i], sample[idx]);
+    }
   }
-}
 
-// The random number generator used by RANSAC.
-std::mt19937 rng_;
-std::vector<std::uniform_int_distribution<int>> uniform_dstr_;
-// The number of data types.
-int num_data_types_;
-// The number of data points for each data type.
-std::vector<int> num_data_;
+  // The random number generator used by RANSAC.
+  std::mt19937 rng_;
+  std::vector<std::uniform_int_distribution<int>> uniform_dstr_;
+  // The number of data types.
+  int num_data_types_;
+  // The number of data points for each data type.
+  std::vector<int> num_data_;
 };  // namespace ransac_lib
 
 }  // namespace ransac_lib

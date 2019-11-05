@@ -103,7 +103,7 @@ class HybridLineEstimator {
 
   Eigen::Matrix2Xd points_;
   int num_points_;
-  Eigen::Matrix4Xd& points_with_normals_;
+  Eigen::Matrix4Xd points_with_normals_;
   int num_points_with_normals_;
 };
 

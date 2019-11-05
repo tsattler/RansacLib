@@ -54,13 +54,13 @@ HybridLineEstimator::HybridLineEstimator(
   num_points_with_normals_ = points_with_normals_.cols();
 }
 
-int LineEstimator::LeastSquares(const std::vector<std::vector<int>>& sample,
-                                Eigen::Vector3d* line) const {
+void HybridLineEstimator::LeastSquares(
+    const std::vector<std::vector<int>>& sample, Eigen::Vector3d* line) const {
   const int kNumSamplesPoints = static_cast<int>(sample[0].size());
   const int kNumSamplesPointsWithNormals = static_cast<int>(sample[1].size());
   const int kNumSamples = kNumSamplesPoints + kNumSamplesPointsWithNormals;
-  
-  if (kNumSamples < 6) return 0;
+
+  if (kNumSamples < 6) return;
   // We fit the line by estimating the eigenvectors of the covariance matrix
   // of the data.
   Eigen::Vector2d mean(0.0, 0.0);
@@ -80,37 +80,35 @@ int LineEstimator::LeastSquares(const std::vector<std::vector<int>>& sample,
     C += d * d.transpose();
   }
   for (int i = 0; i < kNumSamplesPointsWithNormals; ++i) {
-    Eigen::Vector2d d = points_with_normals_.col(sample[1][i]) - mean;
+    Eigen::Vector2d d = points_with_normals_.col(sample[1][i]).head<2>() - mean;
     C += d * d.transpose();
   }
   C /= static_cast<double>(kNumSamples - 1);
 
   Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig_solver(C);
-  if (eig_solver.info() != Eigen::Success) return 0;
+  if (eig_solver.info() != Eigen::Success) return;
 
   line->head<2>() = eig_solver.eigenvectors().col(1);
 
   // Re-estimates the translation along the line to account for subtraction
   // of mean.
   (*line)[2] = -line->head<2>().dot(mean);
-
-  return 1;
 }
 
 // Evaluates the line on the i-th data point of the t-th data type.
-double LineEstimator::EvaluateModelOnPoint(const Eigen::Vector3d& line, int t,
-                                           int i) const {
+double HybridLineEstimator::EvaluateModelOnPoint(const Eigen::Vector3d& line,
+                                                 int t, int i) const {
   double residual = 0.0;
   if (t == 0) {
     residual = line.dot(points_.col(i).homogeneous());
   } else {
-    residual = line.dot(points_with_normals.col(i).head<2>().homogeneous());
+    residual = line.dot(points_with_normals_.col(i).head<2>().homogeneous());
   }
   return residual * residual;
 }
 
-int LineEstimator::TwoPointSolver(const std::vector<int>& sample,
-                                  std::vector<Eigen::Vector3d>* lines) const {
+int HybridLineEstimator::TwoPointSolver(
+    const std::vector<int>& sample, std::vector<Eigen::Vector3d>* lines) const {
   lines->clear();
   if (sample.size() < 2u) return 0;
 
@@ -130,7 +128,7 @@ int LineEstimator::TwoPointSolver(const std::vector<int>& sample,
   return 1;
 }
 
-int LineEstimator::PointNormalSolver(
+int HybridLineEstimator::PointNormalSolver(
     const std::vector<int>& sample, std::vector<Eigen::Vector3d>* lines) const {
   lines->clear();
   if (sample.size() < 1u) return 0;

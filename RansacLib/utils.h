@@ -131,10 +131,10 @@ inline uint32_t NumRequiredIterations(const std::vector<double> inlier_ratios,
     prob_all_inlier_sample *=
         std::pow(inlier_ratios[i], static_cast<double>(sample_sizes[i]));
   }
-  if (inlier_ratio <= 0.0) {
+  if (prob_all_inlier_sample <= 0.0) {
     return max_iterations;
   }
-  if (inlier_ratio >= 1.0) {
+  if (prob_all_inlier_sample >= 1.0) {
     return min_iterations;
   }
 
