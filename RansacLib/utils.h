@@ -55,10 +55,98 @@ inline void RandomShuffle(std::mt19937* rng, std::vector<int>* random_sample) {
   }
 }
 
+template <class T>
+inline void RandomShuffle(std::mt19937* rng, std::vector<T>* random_sample) {
+  std::vector<T>& sample = *random_sample;
+  const int kNumElements = static_cast<int>(sample.size());
+  for (int i = 0; i < (kNumElements - 1); ++i) {
+    std::uniform_int_distribution<int> dist(i, kNumElements - 1);
+    int idx = dist(*rng);
+    std::swap(sample[i], sample[idx]);
+  }
+}
+
 inline void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
-                            std::vector<int>* random_sample) {
+                                   std::vector<int>* random_sample) {
   RandomShuffle(rng, random_sample);
   random_sample->resize(target_size);
+}
+
+// RandomShuffleAndResize for Hybrid RANSAC.
+void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
+                            std::vector<std::vector<int>>* random_sample) {
+  const int kNumDataTypes = static_cast<int>(random_sample->size());
+  std::vector<std::pair<int, int>> data;
+  for (int i = 0; i < kNumDataTypes; ++i) {
+    const int kNumData = static_cast<int>((*random_sample)[i].size());
+    for (int j = 0; j < kNumData; ++j) {
+      data.push_back(std::make_pair(i, (*random_sample)[i][j]));
+    }
+    (*random_sample)[i].clear();
+  }
+  RandomShuffle<std::pair<int, int>>(rng, &data);
+  data.resize(target_size);
+
+  for (int i = 0; i < target_size; ++i) {
+    (*random_sample)[data[i].first].push_back(data[i].second);
+  }
+}
+
+// Computes the number of RANSAC iterations required for a given inlier
+// ratio, the probability of missing the best model, and sample size.
+// Assumes that min_iterations <= max_iterations.
+inline uint32_t NumRequiredIterations(const double inlier_ratio,
+                                      const double prob_missing_best_model,
+                                      const int sample_size,
+                                      const uint32_t min_iterations,
+                                      const uint32_t max_iterations) {
+  if (inlier_ratio <= 0.0) {
+    return max_iterations;
+  }
+  if (inlier_ratio >= 1.0) {
+    return min_iterations;
+  }
+
+  const double kProbNonInlierSample =
+      1.0 - std::pow(inlier_ratio, static_cast<double>(sample_size));
+  const double kLogNumerator = std::log(prob_missing_best_model);
+  const double kLogDenominator = std::log(kProbNonInlierSample);
+
+  double num_iters = std::ceil(kLogNumerator / kLogDenominator + 0.5);
+  uint32_t num_req_iterations =
+      std::min(static_cast<uint32_t>(num_iters), max_iterations);
+  num_req_iterations = std::max(min_iterations, num_req_iterations);
+  return num_req_iterations;
+}
+
+inline uint32_t NumRequiredIterations(const std::vector<double> inlier_ratios,
+                                      const double prob_missing_best_model,
+                                      const std::vector<int> sample_sizes,
+                                      const uint32_t min_iterations,
+                                      const uint32_t max_iterations) {
+  const int kNumDataTypes = static_cast<int>(sample_sizes.size());
+
+  double prob_all_inlier_sample = 1.0;
+  for (int i = 0; kNumDataTypes; ++i) {
+    prob_all_inlier_sample *=
+        std::pow(inlier_ratios[i], static_cast<double>(sample_sizes[i]));
+  }
+  if (inlier_ratio <= 0.0) {
+    return max_iterations;
+  }
+  if (inlier_ratio >= 1.0) {
+    return min_iterations;
+  }
+
+  const double kProbNonInlierSample = 1.0 - prob_all_inlier_sample;
+  const double kLogNumerator = std::log(prob_missing_best_model);
+  const double kLogDenominator = std::log(kProbNonInlierSample);
+
+  double num_iters = std::ceil(kLogNumerator / kLogDenominator + 0.5);
+  uint32_t num_req_iterations =
+      std::min(static_cast<uint32_t>(num_iters), max_iterations);
+  num_req_iterations = std::max(min_iterations, num_req_iterations);
+  return num_req_iterations;
 }
 
 }  // namespace utils

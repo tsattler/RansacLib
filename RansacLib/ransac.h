@@ -111,33 +111,6 @@ class RansacBase {
     stats.inlier_indices.clear();
     stats.number_lo_iterations = 0;
   }
-
-  // Computes the number of RANSAC iterations required for a given inlier
-  // ratio, the probability of missing the best model, and sample size.
-  // Assumes that min_iterations <= max_iterations.
-  inline uint32_t NumRequiredIterations(const double inlier_ratio,
-                                        const double prob_missing_best_model,
-                                        const int sample_size,
-                                        const uint32_t min_iterations,
-                                        const uint32_t max_iterations) const {
-    if (inlier_ratio <= 0.0) {
-      return max_iterations;
-    }
-    if (inlier_ratio >= 1.0) {
-      return min_iterations;
-    }
-
-    const double kProbNonInlierSample =
-        1.0 - std::pow(inlier_ratio, static_cast<double>(sample_size));
-    const double kLogNumerator = std::log(prob_missing_best_model);
-    const double kLogDenominator = std::log(kProbNonInlierSample);
-
-    double num_iters = std::ceil(kLogNumerator / kLogDenominator + 0.5);
-    uint32_t num_req_iterations =
-        std::min(static_cast<uint32_t>(num_iters), max_iterations);
-    num_req_iterations = std::max(min_iterations, num_req_iterations);
-    return num_req_iterations;
-  }
 };
 
 // Implements LO-RANSAC with MSAC (top-hat) scoring, based on the description
@@ -195,7 +168,7 @@ class LocallyOptimizedMSAC : public RansacBase {
             solver, *best_model, kSqrInlierThresh, &(stats.inlier_indices));
         stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
                              static_cast<double>(kNumData);
-        max_num_iterations = NumRequiredIterations(
+        max_num_iterations = utils::NumRequiredIterations(
             stats.inlier_ratio, 1.0 - options.success_probability_,
             kMinSampleSize, options.min_num_iterations_,
             options.max_num_iterations_);
@@ -243,12 +216,11 @@ class LocallyOptimizedMSAC : public RansacBase {
         if (kRunLO) {
           ++stats.number_lo_iterations;
           double score = best_min_model_score;
-          LocalOptimization(options, solver, &best_minimal_model,
-                            &score);
+          LocalOptimization(options, solver, &best_minimal_model, &score);
 
           // Updates the best model.
-          UpdateBestModel(score, best_minimal_model,
-                          &(stats.best_model_score), best_model);
+          UpdateBestModel(score, best_minimal_model, &(stats.best_model_score),
+                          best_model);
         }
 
         // Updates the number of RANSAC iterations.
@@ -256,7 +228,7 @@ class LocallyOptimizedMSAC : public RansacBase {
             solver, *best_model, kSqrInlierThresh, &(stats.inlier_indices));
         stats.inlier_ratio = static_cast<double>(stats.best_num_inliers) /
                              static_cast<double>(kNumData);
-        max_num_iterations = NumRequiredIterations(
+        max_num_iterations = utils::NumRequiredIterations(
             stats.inlier_ratio, 1.0 - options.success_probability_,
             kMinSampleSize, options.min_num_iterations_,
             options.max_num_iterations_);

@@ -5,6 +5,7 @@ This library provides a template-based, header-only implementation of RANSAC and
 Currently, the following RANSAC-variants are implemented
 * LO-MSAC as described in *Lebeda, Matas, Chum, Fixing the Locally Optimized RANSAC, BMVC 2012*: RANSAC with local optimization (LO) and a truncated quadratic scoring function (as used by MSAC, described in *Torr, Zisserman,  Robust computation and parametrization of multiple view relations, ICCV 1998*).
 * MSAC with a non-linear refinement of each so-far best minimal model. To use MSAC instead of LO-MSAC, set `num_lo_steps_` in `LORansacOptions` to `0`.
+* HybridRANSAC as described in *Camposeco, Cohen, Pollefeys, Sattler, Hybrid Camera Pose Estimation, CVPR 2018*: A RANSAC variant that can handle two types of input data (e.g., 2D-3D and 2D-2D matches) and that uses multiple solvers. The implementation uses local optimization and the MSAC cost function.
 
 
 ## Installation
@@ -100,6 +101,56 @@ class MySolver {
 
 **Important**: Note that all mandatory functions defined above are `const` and do not alter the state of the solver. This is a deliberate design choice: the `Solver` class also encapulates the input data, e.g., 2D-3D matches for absolute pose estimation. This data should not be altered by the solver. We thus pass the solver into RANSAC as `const Solver& solver`. We acknowledge that this could potentially be restricting in some cases and are open to suggestions on how to guarantee that the input data is not altered while allowing the solver to change its internal state.
 
+### HybridSolver Class
+The Hybrid RANSAC implementation requires the use of a `HybridSolver` rather than the `Solver` class. As with the `Solver` class, the `HybridSolver` class implements all functionality to estimate and evaluate minimal models. In addition, it provided additional functionality to enable the use of multiple minimal solvers inside RANSAC. Note that the class does not provide a non-minimal solver implementation as of now (due to the ambiguity in how to define a non-minimal solver for different types of data). The following shows the how to implement a solver (see also the examples provided with RansacLib):
+```
+class MyHybridSolver {
+public:
+// Returns the number of minimal solvers.
+int num_minimal_solvers() const;
+
+// Returns the number of data points required by each minimal solver.
+// Note that even if solver i does not require data of a certain type, the
+// corresponding entry in min_sample_sizes[i] still needs to be set to 0.
+void min_sample_sizes(std::vector<std::vector<int>>* min_sample_sizes) const;
+
+// Returns the number of data types stored in the solver.
+int num_data_types() const;
+
+// Returns the number of data points stored in the solver for each type of
+// data.
+void num_data(std::vector<int>* num_data) const;
+
+// Returns the prior probabilities for all solvers.
+void solver_probabilities(std::vector<double>* solver_probabilites) const;
+
+// A call to one of the minimal solvers implemented inside the solver. The
+// input are multiple sets of indices, each between 0 and
+// num_data[solver_idx] - 1 that form the random minimal sample drawn by 
+// HybridRANSAC. In addition, the index solver_idx of the minimal solver
+// selected by HybridRANSAC is provided as input. The overall size of the
+// sample is guaranteed to be sample_sizes[solver_idx]. The function is 
+// responsible for running the solver_idx-th minimal solver on these
+// selected data points. The estimated models are returned in models and 
+// the function returns the estimated number of models.
+int MinimalSolver(const std::vector<std::vector<int>>& sample,
+                  const int solver_idx, ModelVector* models) const;
+
+// Evaluates a given model on the i-th data point of the t-th data type
+// and returns the squared error of that correspondence wrt. the model.
+double EvaluateModelOnPoint(const Model& model, int t, int i) const;
+
+// Performs least squares refinement of a given input Model model. On
+// return, model contains the refined model. sample contains the indices
+// of the data points that should be used to refine the model.
+// This function has to be implemented, but can simply be empty. In this case
+// the input model is left unaltered and no refinement occurs. Not implementing
+// this function will decrease the effectiveness of local optimization and RANSAC.
+void LeastSquares(const std::vector<std::vector<int>>& sample,
+                  Model* model) const;
+};
+```
+
 ## License
 RansacLib is licensed under the BSD 3-Clause license. Please see [License](https://github.com/tsattler/RansacLib/blob/master/LICENSE) for details.
 
@@ -134,6 +185,16 @@ Please cite also the original publications of the different methods:
   year = {1998}
 }
 ```
+* When using the ```LocallyOptimizedHybridMSAC``` implementatio in [ransac.h](https://github.com/tsattler/RansacLib/blob/master/RansacLib/ransac.h), please cite
+```
+@inproceedings{Lebeda2012BMVC,
+title = {{Hybrid Camera Pose Estimation}},
+author = {Federico Camposeco and Andrea Cohen and Marc Pollefeys and Torsten Sattler},
+booktitle = {Conference on Computer Vision and Pattern Recognition (CVPR)},
+year = {2018}
+}
+```
+and the paper by Lebeda et al.
 
 ## Contributing
 Contributions to RansacLib, e.g., bug reports, improvements, or bug fixes, are very welcome. Please use Github's issues and pull request functionality to contribute. 
