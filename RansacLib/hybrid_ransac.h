@@ -150,7 +150,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
 
     std::vector<int> num_data;
     solver.num_data(&num_data);
-    
+
     if (!VerifyData(min_sample_sizes, num_data, kNumSolvers, kNumDataTypes,
                     &prior_probabilities)) {
       return 0;
@@ -325,6 +325,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       if (num_iters > 0.0) {
         num_iters -= 1.0;
       }
+
       double all_inlier_prob = 1.0;
       for (int j = 0; j < kNumDataTypes; ++j) {
         all_inlier_prob *=
@@ -344,7 +345,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     double current_prob = 0.0;
     for (int i = 0; i < kNumSolvers; ++i) {
       current_prob += probabilities[i];
-      if (current_prob >= kProb) return i;
+      if (kProb <= current_prob) return i;
     }
     return kNumSolvers - 1;
   }
@@ -534,7 +535,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
                        std::mt19937* rng, Model* model) const {
     std::vector<std::vector<int>> min_sample_sizes;
     solver.min_sample_sizes(&min_sample_sizes);
-    
+
     const int kLSqSampleSize =
         options.min_sample_multiplicator_ *
         std::accumulate(min_sample_sizes[solver_type].begin(),

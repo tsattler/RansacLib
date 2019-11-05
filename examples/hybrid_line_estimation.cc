@@ -46,9 +46,21 @@
 #include <RansacLib/ransac.h>
 #include "hybrid_line_estimator.h"
 
+// Generates a random transformation.
+void GenerateRandomTransform(Eigen::Matrix2d* R, Eigen::Vector2d* t) {
+  std::random_device rand_dev;
+  std::mt19937 rng(rand_dev());
+  std::uniform_real_distribution<double> distr(-0.5, 0.5);
+
+  const double kAngle = distr(rng) * M_PI;
+  *R << std::cos(kAngle), -std::sin(kAngle), std::sin(kAngle), std::cos(kAngle);
+  *t = Eigen::Vector2d(distr(rng) * 10.0, distr(rng) * 10.0);
+}
+
 // Assumes that inlier threshold << 0.5.
 void GenerateRandomInstance(const int num_inliers, const int num_outliers,
-                            double inlier_threshold,
+                            double inlier_threshold, const Eigen::Matrix2d& R,
+                            const Eigen::Vector2d& t,
                             Eigen::Matrix4Xd* points_with_normals) {
   const int kNumPoints = num_inliers + num_outliers;
   points_with_normals->resize(4, kNumPoints);
@@ -105,12 +117,7 @@ void GenerateRandomInstance(const int num_inliers, const int num_outliers,
     }
   }
 
-  // Randomly rotates and translates the points.
-  const double kAngle = distr_y(rng) * M_PI;
-  Eigen::Matrix2d R;
-  R << std::cos(kAngle), -std::sin(kAngle), std::sin(kAngle), std::cos(kAngle);
-  Eigen::Vector2d t(distr_y(rng) * 10.0, distr_y(rng) * 10.0);
-
+  // Rotates and translates the points.
   for (int i = 0; i < kNumPoints; ++i) {
     Eigen::Vector2d p = R * points_with_normals->col(i).head<2>() + t;
     points_with_normals->col(i).head<2>() = p;
@@ -133,17 +140,21 @@ int main(int argc, char** argv) {
   // and then applies HybridRANSAC on it.
   const int kNumDataPoints = 100;
   const int kNumDataPointsWithNormals = 100;
-  std::vector<double> outlier_ratios = {0.1, 0.2, 0.3, 0.4,  0.5,  0.6,
-                                        0.7, 0.8, 0.9, 0.95, 0.99, 0.999};
+  std::vector<double> outlier_ratios = {0.1, 0.2, 0.3, 0.4, 0.5,
+                                        0.6, 0.7, 0.8, 0.9};
   for (const double outlier_ratio : outlier_ratios) {
     std::cout << " Inlier ratio: " << 1.0 - outlier_ratio << std::endl;
     int num_outliers_points =
         static_cast<int>(static_cast<double>(kNumDataPoints) * outlier_ratio);
     int num_inliers_points = kNumDataPoints - num_outliers_points;
 
+    Eigen::Matrix2d R;
+    Eigen::Vector2d t;
+    GenerateRandomTransform(&R, &t);
+
     Eigen::Matrix4Xd data;
     GenerateRandomInstance(num_inliers_points, num_outliers_points, 0.5 * 0.01,
-                           &data);
+                           R, t, &data);
     Eigen::Matrix2Xd points(2, data.cols());
     points.row(0) = data.row(0);
     points.row(1) = data.row(1);
@@ -154,11 +165,12 @@ int main(int argc, char** argv) {
         kNumDataPointsWithNormals - num_outliers_points_with_normals;
 
     GenerateRandomInstance(num_inliers_points_with_normals,
-                           num_outliers_points_with_normals, 0.5 * 0.01, &data);
+                           num_outliers_points_with_normals, 0.5 * 0.01, R, t,
+                           &data);
     Eigen::Matrix4Xd points_with_normals = data;
     std::cout << "   ... instance generated" << std::endl;
 
-    std::vector<double> prior_probabilities = {0.5, 0.5};
+    std::vector<double> prior_probabilities = {0.2, 0.8};
     ransac_lib::HybridLineEstimator solver(points, points_with_normals,
                                            prior_probabilities);
     ransac_lib::HybridLocallyOptimizedMSAC<Eigen::Vector3d,
