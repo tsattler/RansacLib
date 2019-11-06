@@ -73,7 +73,7 @@ inline void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
 }
 
 // RandomShuffleAndResize for Hybrid RANSAC.
-void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
+inline void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
                             std::vector<std::vector<int>>* random_sample) {
   const int kNumDataTypes = static_cast<int>(random_sample->size());
   std::vector<std::pair<int, int>> data;
