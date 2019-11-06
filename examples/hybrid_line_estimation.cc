@@ -132,6 +132,7 @@ int main(int argc, char** argv) {
   options.max_num_iterations_ = 10000u;
   options.max_num_iterations_per_solver_ = 1000u;
   options.squared_inlier_thresholds_ = {0.01 * 0.01, 0.01 * 0.01};
+  options.data_type_weights_ = {2.0, 0.5};
 
   std::random_device rand_dev;
   options.random_seed_ = rand_dev();

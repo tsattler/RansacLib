@@ -59,6 +59,9 @@ class HybridRansacOptions {
   uint32_t max_num_iterations_per_solver_;
   double success_probability_;
   std::vector<double> squared_inlier_thresholds_;
+  // An importance weight for each data type. Higher weight means higher
+  // importance.
+  std::vector<double> data_type_weights_;
   unsigned int random_seed_;
 };
 
@@ -209,9 +212,9 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
         // Finds the best model among all estimated models.
         double best_local_score = std::numeric_limits<double>::max();
         int best_local_model_id = 0;
-        GetBestEstimatedModelId(solver, estimated_models, kSqrInlierThresh,
-                                kNumDataTypes, num_data, &best_local_score,
-                                &best_local_model_id);
+        GetBestEstimatedModelId(options, solver, estimated_models,
+                                kSqrInlierThresh, kNumDataTypes, num_data,
+                                &best_local_score, &best_local_model_id);
 
         // Updates the best model found so far.
         if (best_local_score < best_min_model_score ||
@@ -287,8 +290,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       solver.LeastSquares(stats.inlier_indices, &refined_model);
 
       double score = std::numeric_limits<double>::max();
-      ScoreModel(solver, refined_model, kSqrInlierThresh, kNumDataTypes,
-                 num_data, &score);
+      ScoreModel(options, solver, refined_model, kSqrInlierThresh,
+                 kNumDataTypes, num_data, &score);
       if (score < stats.best_model_score) {
         stats.best_model_score = score;
         *best_model = refined_model;
@@ -351,7 +354,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
   }
 
   void GetBestEstimatedModelId(
-      const HybridSolver& solver, const ModelVector& models,
+      const HybridLORansacOptions& options, const HybridSolver& solver,
+      const ModelVector& models,
       const std::vector<double>& squared_inlier_thresholds,
       const int num_data_types, const std::vector<int> num_data,
       double* best_score, int* best_model_id) const {
@@ -361,8 +365,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     const int kNumEstimatedModels = static_cast<int>(models.size());
     for (int m = 0; m < kNumEstimatedModels; ++m) {
       double score = std::numeric_limits<double>::max();
-      ScoreModel(solver, models[m], squared_inlier_thresholds, num_data_types,
-                 num_data, &score);
+      ScoreModel(options, solver, models[m], squared_inlier_thresholds,
+                 num_data_types, num_data, &score);
 
       if (score < *best_score) {
         *best_score = score;
@@ -371,7 +375,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     }
   }
 
-  void ScoreModel(const HybridSolver& solver, const Model& model,
+  void ScoreModel(const HybridLORansacOptions& options,
+                  const HybridSolver& solver, const Model& model,
                   const std::vector<double>& squared_inlier_thresholds,
                   const int num_data_types, const std::vector<int> num_data,
                   double* score) const {
@@ -380,7 +385,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     for (int t = 0; t < num_data_types; ++t) {
       for (int i = 0; i < num_data[t]; ++i) {
         double squared_error = solver.EvaluateModelOnPoint(model, t, i);
-        *score += ComputeScore(squared_error, squared_inlier_thresholds[t]);
+        *score += ComputeScore(squared_error, squared_inlier_thresholds[t]) *
+                  options.data_type_weights_[t];
       }
     }
   }
@@ -492,7 +498,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
                     &rng, &m_init);
 
     double score = std::numeric_limits<double>::max();
-    ScoreModel(solver, m_init, options.squared_inlier_thresholds_,
+    ScoreModel(options, solver, m_init, options.squared_inlier_thresholds_,
                kNumDataTypes, num_data, &score);
     UpdateBestModel(score, m_init, solver_type, score_best_minimal_model,
                     best_minimal_model, best_solver_type);
@@ -518,8 +524,9 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
         LeastSquaresFit(options, squared_inlier_thresholds, solver_type, solver,
                         &rng, &m_non_min);
 
-        ScoreModel(solver, m_non_min, options.squared_inlier_thresholds_,
-                   kNumDataTypes, num_data, &score);
+        ScoreModel(options, solver, m_non_min,
+                   options.squared_inlier_thresholds_, kNumDataTypes, num_data,
+                   &score);
         UpdateBestModel(score, m_non_min, solver_type, score_best_minimal_model,
                         best_minimal_model, best_solver_type);
         for (int i = 0; i < kNumDataTypes; ++i) {
