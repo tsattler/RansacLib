@@ -200,6 +200,12 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
 
       const int kSolverType =
           SelectMinimalSolver(solver, prior_probabilities, stats, &rng);
+      
+      if (kSolverType < -1) {
+        // Since no solver could be selected, we stop Hybrid RANSAC here.
+        break;
+      }
+      
       stats.num_iterations_per_solver[kSolverType] += 1;
 
       sampler.Sample(min_sample_sizes[kSolverType], &minimal_sample);
@@ -364,7 +370,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       current_prob += probabilities[i];
       if (kProb <= current_prob) return i;
     }
-    return kNumSolvers - 1;
+    return -1;
   }
 
   void GetBestEstimatedModelId(
