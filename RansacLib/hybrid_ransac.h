@@ -359,6 +359,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     const double kProb = dist(*rng);
     double current_prob = 0.0;
     for (int i = 0; i < kNumSolvers; ++i) {
+      if (prior_probabilities[i] == 0.0) continue;
+
       current_prob += probabilities[i];
       if (kProb <= current_prob) return i;
     }
@@ -583,7 +585,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
   bool VerifyData(const std::vector<std::vector<int>>& min_sample_sizes,
                   const std::vector<int>& num_data, const int num_solvers,
                   const int num_data_types,
-                  std::vector<double>* prior_probabilities) const {    
+                  std::vector<double>* prior_probabilities) const {
     for (int i = 0; i < num_solvers; ++i) {
       for (int j = 0; j < num_data_types; ++j) {
         if (min_sample_sizes[i][j] > num_data[j] ||
