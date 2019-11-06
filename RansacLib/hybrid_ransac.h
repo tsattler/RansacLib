@@ -322,24 +322,36 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
 
     const int kNumDataTypes = solver.num_data_types();
 
-    for (int i = 0; i < kNumSolvers; ++i) {
-      double num_iters =
-          static_cast<double>(stats.num_iterations_per_solver[i]);
-      if (num_iters > 0.0) {
-        num_iters -= 1.0;
-      }
+    // There is a special case where all inlier ratios are 0. In this case, the
+    // solvers should be sampled based on the priors.
+    const double kSumInlierRatios = std::accumulate(
+        stats.inlier_ratios.begin(), stats.inlier_ratios.end(), 0.0);
 
-      double all_inlier_prob = 1.0;
-      for (int j = 0; j < kNumDataTypes; ++j) {
-        all_inlier_prob *=
-            std::pow(stats.inlier_ratios[j],
-                     static_cast<double>(min_sample_sizes[i][j]));
+    if (kSumInlierRatios == 0.0) {
+      for (int i = 0; i < kNumSolvers; ++i) {
+        probabilities[i] = prior_probabilities[i];
+        sum_probabilities += probabilities[i];
       }
+    } else {
+      for (int i = 0; i < kNumSolvers; ++i) {
+        double num_iters =
+            static_cast<double>(stats.num_iterations_per_solver[i]);
+        if (num_iters > 0.0) {
+          num_iters -= 1.0;
+        }
 
-      probabilities[i] = all_inlier_prob *
-                         std::pow(1.0 - all_inlier_prob, num_iters) *
-                         prior_probabilities[i];
-      sum_probabilities += probabilities[i];
+        double all_inlier_prob = 1.0;
+        for (int j = 0; j < kNumDataTypes; ++j) {
+          all_inlier_prob *=
+              std::pow(stats.inlier_ratios[j],
+                       static_cast<double>(min_sample_sizes[i][j]));
+        }
+
+        probabilities[i] = all_inlier_prob *
+                           std::pow(1.0 - all_inlier_prob, num_iters) *
+                           prior_probabilities[i];
+        sum_probabilities += probabilities[i];
+      }
     }
 
     std::uniform_real_distribution<double> dist(0.0, sum_probabilities);
