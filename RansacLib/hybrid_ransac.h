@@ -201,12 +201,12 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       const int kSolverType =
           SelectMinimalSolver(solver, prior_probabilities, stats,
                               options.min_num_iterations_, &rng);
-      
+
       if (kSolverType < -1) {
         // Since no solver could be selected, we stop Hybrid RANSAC here.
         break;
       }
-      
+
       stats.num_iterations_per_solver[kSolverType] += 1;
 
       sampler.Sample(min_sample_sizes[kSolverType], &minimal_sample);
@@ -359,8 +359,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
           probabilities[i] = all_inlier_prob * prior_probabilities[i];
         } else {
           probabilities[i] = all_inlier_prob *
-                            std::pow(1.0 - all_inlier_prob, num_iters) *
-                            prior_probabilities[i];
+                             std::pow(1.0 - all_inlier_prob, num_iters) *
+                             prior_probabilities[i];
         }
         sum_probabilities += probabilities[i];
       }
@@ -474,7 +474,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       if (num_data[d] > 0) {
         statistics->inlier_ratios[d] =
             static_cast<double>(statistics->inlier_indices[d].size()) /
-                static_cast<double>(num_data[d]);
+            static_cast<double>(num_data[d]);
       } else {
         statistics->inlier_ratios[d] = 0.0;
       }
@@ -570,18 +570,20 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
                        const std::vector<double>& thresholds,
                        const int solver_type, const HybridSolver& solver,
                        std::mt19937* rng, Model* model) const {
-    std::vector<std::vector<int>> min_sample_sizes;
-    solver.min_sample_sizes(&min_sample_sizes);
-
-    const int kLSqSampleSize =
-        options.min_sample_multiplicator_ *
-        std::accumulate(min_sample_sizes[solver_type].begin(),
-                        min_sample_sizes[solver_type].end(), 0);
+    std::vector<std::vector<int>> sample_sizes;
+    solver.min_sample_sizes(&sample_sizes);
 
     std::vector<std::vector<int>> inliers;
     int num_inliers = GetInliers(solver, *model, thresholds, &inliers);
-    int lsq_data_size = std::min(kLSqSampleSize, num_inliers);
-    utils::RandomShuffleAndResize(lsq_data_size, rng, &inliers);
+
+    const int kNumDataTypes = solver.num_data_types();
+    for (int i = 0; i < kNumDataTypes; ++i) {
+      sample_sizes[solver_type][i] *= options.min_sample_multiplicator_;
+      sample_sizes[solver_type][i] = std::min(
+          sample_sizes[solver_type][i], static_cast<int>(inliers[i].size()));
+    }
+
+    utils::RandomShuffleAndResize(sample_sizes[solver_type], rng, &inliers);
     solver.LeastSquares(inliers, model);
   }
 

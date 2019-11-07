@@ -72,7 +72,7 @@ inline void RandomShuffleAndResize(const int target_size, std::mt19937* rng,
   random_sample->resize(target_size);
 }
 
-// RandomShuffleAndResize for Hybrid RANSAC.
+// RandomShuffleAndResize variants for Hybrid RANSAC.
 inline void RandomShuffleAndResize(
     const int target_size, std::mt19937* rng,
     std::vector<std::vector<int>>* random_sample) {
@@ -90,6 +90,17 @@ inline void RandomShuffleAndResize(
 
   for (int i = 0; i < target_size; ++i) {
     (*random_sample)[data[i].first].push_back(data[i].second);
+  }
+}
+
+inline void RandomShuffleAndResize(
+    const std::vector<int> sample_sizes, std::mt19937* rng,
+    std::vector<std::vector<int>>* random_sample) {
+  const int kNumDataTypes = static_cast<int>(random_sample->size());
+  for (int i = 0; i < kNumDataTypes; ++i) {
+    const int kNumData = static_cast<int>((*random_sample)[i].size());
+    const int kSampleSize = std::min(kNumData, sample_sizes[i]);
+    RandomShuffleAndResize(kSampleSize, rng, &((*random_sample)[i]));
   }
 }
 
