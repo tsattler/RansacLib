@@ -465,9 +465,13 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
     solver.num_data(&num_data);
 
     for (int d = 0; d < kNumDataTypes; ++d) {
-      statistics->inlier_ratios[d] =
-          static_cast<double>(statistics->inlier_indices[d].size()) /
-          static_cast<double>(num_data[d]);
+      if (num_data[d] > 0) {
+        statistics->inlier_ratios[d] =
+            static_cast<double>(statistics->inlier_indices[d].size()) /
+                static_cast<double>(num_data[d]);
+      } else {
+        statistics->inlier_ratios[d] = 0.0;
+      }
     }
 
     std::vector<std::vector<int>> min_sample_sizes;
