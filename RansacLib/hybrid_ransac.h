@@ -199,7 +199,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       }
 
       const int kSolverType =
-          SelectMinimalSolver(solver, prior_probabilities, stats, &rng);
+          SelectMinimalSolver(solver, prior_probabilities, stats,
+                              options.min_num_iterations_, &rng);
       
       if (kSolverType < -1) {
         // Since no solver could be selected, we stop Hybrid RANSAC here.
@@ -319,6 +320,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
   int SelectMinimalSolver(const HybridSolver& solver,
                           const std::vector<double> prior_probabilities,
                           const HybridRansacStatistics& stats,
+                          const uint32_t min_num_iterations,
                           std::mt19937* rng) const {
     double sum_probabilities = 0.0;
     const int kNumSolvers = static_cast<int>(prior_probabilities.size());
@@ -353,9 +355,13 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
                        static_cast<double>(min_sample_sizes[i][j]));
         }
 
-        probabilities[i] = all_inlier_prob *
-                           std::pow(1.0 - all_inlier_prob, num_iters) *
-                           prior_probabilities[i];
+        if (num_iters < static_cast<double>(min_num_iterations)) {
+          probabilities[i] = all_inlier_prob * prior_probabilities[i];
+        } else {
+          probabilities[i] = all_inlier_prob *
+                            std::pow(1.0 - all_inlier_prob, num_iters) *
+                            prior_probabilities[i];
+        }
         sum_probabilities += probabilities[i];
       }
     }
