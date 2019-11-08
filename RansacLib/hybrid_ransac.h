@@ -578,7 +578,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
 
     const int kNumDataTypes = solver.num_data_types();
     for (int i = 0; i < kNumDataTypes; ++i) {
-      if (inliers[i].size() < sample_sizes[solver_type[i]) {
+      if (static_cast<int>(inliers[i].size()) < sample_sizes[solver_type][i]) {
         // The estimated pose has fewer inliers than required by the minimal
         // sample size. In this case, the least squares solution will likely be
         // very inaccurate and we thus skip the least squares fitting step.
