@@ -34,6 +34,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <random>
@@ -179,7 +180,29 @@ int main(int argc, char** argv) {
                 << std::endl;
       continue;
     }
+    
     const int kNumMatches = static_cast<int>(points2D.size());
+//    // Writes out the matches after subtracting the principal point.
+//    {
+//      for (int j = 0; j < kNumMatches; ++j) {
+//        points2D[j][0] -= query_data[i].c_x;
+//        points2D[j][1] -= query_data[i].c_y;
+//      }
+//
+//      std::ofstream ofs(matchfile.c_str(), std::ios::out);
+//      if (ofs.is_open()) {
+//        std::cout << " Updating match file" << std::endl;
+//
+//        for (int j = 0; j < kNumMatches; ++j) {
+//          ofs << std::setprecision(12) << points2D[j][0] << " "
+//              << points2D[j][1] << " " << points3D[j][0] << " "
+//              << points3D[j][1] << " " << points3D[j][2] << std::endl;
+//        }
+//
+//        ofs.close();
+//      }
+//    }
+    
     std::cout << " image " << query_data[i].name << " has # " << kNumMatches
               << " matches as input to RANSAC" << std::endl;
     if (kNumMatches <= 3) {
@@ -195,18 +218,18 @@ int main(int argc, char** argv) {
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
     ransac_lib::LORansacOptions options;
-    options.min_num_iterations_ = 200u;
+    options.min_num_iterations_ = 100u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
-    options.lo_starting_iterations_ = 10;
+    options.lo_starting_iterations_ = 20;
     options.final_least_squares_ = false;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
 
-    const double kInThreshPX = 5.0;
+    const double kInThreshPX = 20.0;
     options.squared_inlier_threshold_ = kInThreshPX * kInThreshPX;
 
     CalibratedAbsolutePoseEstimator solver(
