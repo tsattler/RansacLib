@@ -125,8 +125,8 @@ bool LoadMatches(const std::string& filename,
     s_stream >> p2D[0] >> p2D[1] >> p3D[0] >> p3D[1] >> p3D[2];
 
     // Inverting the y- and z-coordinate due to my choice of coordinate system.
-    p3D[1] *= -1.0;
-    p3D[2] *= -1.0;
+//     p3D[1] *= -1.0;
+//     p3D[2] *= -1.0;
 
     points2D->push_back(p2D);
     points3D->push_back(p3D);
@@ -191,6 +191,10 @@ int main(int argc, char** argv) {
               << query_data[i].focal_x << " " << query_data[i].focal_y
               << std::endl;
     opengv::bearingVectors_t rays;
+    for (int j = 0; j < kNumMatches; ++j) {
+      points2D[j][0] -= query_data[i].c_x;
+      points2D[j][1] -= query_data[i].c_y;
+    }
     CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
@@ -201,12 +205,12 @@ int main(int argc, char** argv) {
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = 10;
     options.lo_starting_iterations_ = 10;
-    options.final_least_squares_ = false;
+    options.final_least_squares_ = true;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
 
-    const double kInThreshPX = 5.0;
+    const double kInThreshPX = 12.0;
     options.squared_inlier_threshold_ = kInThreshPX * kInThreshPX;
 
     CalibratedAbsolutePoseEstimator solver(
