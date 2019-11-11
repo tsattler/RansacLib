@@ -136,7 +136,87 @@ class HybridUniformSampling {
   int num_data_types_;
   // The number of data points for each data type.
   std::vector<int> num_data_;
-};  // namespace ransac_lib
+};
+
+// Implements a biased sampling for HybridRANSAC, where each data point has
+// an associated weight and points with a higher weight are more likely to be
+// sampled. Points with weight 0 are ignored during sampling.
+class HybridBiasedSampling {
+ public:
+  HybridBiasedSampling(const unsigned int random_seed,
+                       const std::vector<std::vector<double>>& weights) {
+    rng_.seed(random_seed);
+    num_data_types_ = static_cast<int>(weights.size());
+
+    data_ids_.resize(weights.size());
+    distributions_.resize(num_data_types_);
+
+    for (int i = 0; i < num_data_types_; ++i) {
+      data_ids_[i].reserve(weights[i].size());
+      std::vector<double> selected_weights;
+      selected_weights.reserve(weights[i].size());
+      const int kNumElements = static_cast<int>(weights[i].size());
+      for (int j = 0; j < kNumElements; ++j) {
+        if (weights[i][j] > 0.0) {
+          selected_weights.push_back(weights[i][j]);
+          data_ids_[i].push_back(j);
+        }
+      }
+
+      std::discrete_distribution<int> dstr(selected_weights.begin(),
+                                           selected_weights.end());
+      distributions_[i].param(dstr.param());
+    }
+  }
+
+  // Draws minimal sample.
+  void Sample(const std::vector<int>& num_samples_per_data_type,
+              std::vector<std::vector<int>>* random_sample) {
+    std::vector<std::vector<int>>& sample = *random_sample;
+    sample.resize(num_data_types_);
+    for (int i = 0; i < num_data_types_; ++i) {
+      sample[i].clear();
+      if (num_samples_per_data_type[i] <= 0) continue;
+      if (num_samples_per_data_type[i] ==
+          static_cast<int>(data_ids_[i].size())) {
+        (*random_sample)[i] = data_ids_[i];
+      } else {
+        DrawSample(num_samples_per_data_type, i, random_sample);
+      }
+    }
+  }
+
+ protected:
+  // Draws a minimal sample of size sample_size.
+  void DrawSample(const std::vector<int>& num_samples_per_data_type,
+                  const int data_type,
+                  std::vector<std::vector<int>>* random_sample) {
+    std::vector<std::vector<int>>& sample = *random_sample;
+    sample[data_type].resize(num_samples_per_data_type[data_type]);
+    for (int i = 0; i < num_samples_per_data_type[data_type]; ++i) {
+      bool found = true;
+      while (found) {
+        found = false;
+        sample[data_type][i] =
+            data_ids_[data_type][distributions_[data_type](rng_)];
+        for (int j = 0; j < i; ++j) {
+          if (sample[data_type][j] == sample[data_type][i]) {
+            found = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // The random number generator used by RANSAC.
+  std::mt19937 rng_;
+  std::vector<std::discrete_distribution<int>> distributions_;
+  // The number of data types.
+  int num_data_types_;
+  // The data ids for each data type.
+  std::vector<std::vector<int>> data_ids_;
+};
 
 }  // namespace ransac_lib
 

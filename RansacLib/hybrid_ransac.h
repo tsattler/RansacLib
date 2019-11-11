@@ -584,7 +584,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
         // very inaccurate and we thus skip the least squares fitting step.
         return;
       }
-      
+
       sample_sizes[solver_type][i] *= options.min_sample_multiplicator_;
       sample_sizes[solver_type][i] = std::min(
           sample_sizes[solver_type][i], static_cast<int>(inliers[i].size()));
