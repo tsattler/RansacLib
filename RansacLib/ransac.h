@@ -411,6 +411,7 @@ class LocallyOptimizedMSAC : public RansacBase {
         options.min_sample_multiplicator_ * solver.min_sample_size();
     std::vector<int> inliers;
     int num_inliers = GetInliers(solver, *model, thresh, &inliers);
+    if (num_inliers < solver.min_sample_size()) return;
     int lsq_data_size = std::min(kLSqSampleSize, num_inliers);
     utils::RandomShuffleAndResize(lsq_data_size, rng, &inliers);
     solver.LeastSquares(inliers, model);
