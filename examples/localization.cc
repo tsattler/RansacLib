@@ -94,6 +94,17 @@ bool LoadListAndFocals(const std::string& filename,
       q.radial.clear();
       s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y;
       q.focal_y = q.focal_x;
+    } else if (camera_type.compare("OPENCV") == 0) {
+      // The OPENCV camera model used in Colmap (see
+      // https://github.com/colmap/colmap/blob/master/src/base/camera_models.h
+      // for details).
+      q.radial.resize(4);
+      s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y >> q.radial[0]
+               >> q.radial[1] >> q.radial[2] >> q.radial[3];
+    } else if (camera_type.compare("VSFM") == 0) {
+      q.radial.resize(1);
+      s_stream >> q.focal_x >> q.c_x >> q.c_y >> q.radial[0];
+      q.focal_y = q.focal_x;
     }
     query_images->push_back(q);
   }
