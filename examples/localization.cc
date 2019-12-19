@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = atoi(argv[4]);
-    options.lo_starting_iterations_ = 20;
+    options.lo_starting_iterations_ = 60;
     options.final_least_squares_ = true;
 
     std::random_device rand_dev;
