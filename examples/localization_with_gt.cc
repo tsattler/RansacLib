@@ -118,6 +118,17 @@ bool LoadListIntrinsicsAndExtrinsics(const std::string& filename,
     } else if (camera_type.compare("PINHOLE") == 0) {
       q.radial.clear();
       s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y;
+    } else if (camera_type.compare("OPENCV") == 0) {
+      // The OPENCV camera model used in Colmap (see
+      // https://github.com/colmap/colmap/blob/master/src/base/camera_models.h
+      // for details).
+      q.radial.resize(4);
+      s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y >> q.radial[0]
+               >> q.radial[1] >> q.radial[2] >> q.radial[3];
+    } else if (camera_type.compare("VSFM") == 0) {
+      q.radial.resize(1);
+      s_stream >> q.focal_x >> q.c_x >> q.c_y >> q.radial[0];
+      q.focal_y = q.focal_x;
     }
     s_stream >> q.q.w() >> q.q.x() >> q.q.y() >> q.q.z() >> q.c[0] >> q.c[1] >>
         q.c[2];
@@ -130,7 +141,7 @@ bool LoadListIntrinsicsAndExtrinsics(const std::string& filename,
 }
 
 // Loads the 2D-3D matches found for that image from a text file.
-bool LoadMatches(const std::string& filename,
+bool LoadMatches(const std::string& filename, bool invert_Y_Z,
                  ransac_lib::calibrated_absolute_pose::Points2D* points2D,
                  ransac_lib::calibrated_absolute_pose::Points3D* points3D) {
   points2D->clear();
@@ -151,8 +162,10 @@ bool LoadMatches(const std::string& filename,
     Eigen::Vector3d p3D;
     s_stream >> p2D[0] >> p2D[1] >> p3D[0] >> p3D[1] >> p3D[2];
 
-    p3D[1] *= -1.0;
-    p3D[2] *= -1.0;
+    if (invert_Y_Z) {
+      p3D[1] *= -1.0;
+      p3D[2] *= -1.0;
+    }
 
     points2D->push_back(p2D);
     points3D->push_back(p3D);
@@ -170,8 +183,12 @@ int main(int argc, char** argv) {
   using ransac_lib::calibrated_absolute_pose::Points3D;
 
   std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
+            << "inlier_threshold num_lo_steps invert_Y_Z points_centered "
             << "[match-file postfix]" << std::endl;
-  if (argc < 3) return -1;
+  if (argc < 7) return -1;
+
+  bool invert_Y_Z = static_cast<bool>(atoi(argv[5]));
+  bool points_centered = static_cast<bool>(atoi(argv[6]));
 
   Queries query_data;
   std::string list(argv[1]);
@@ -200,18 +217,19 @@ int main(int argc, char** argv) {
   }
 
   std::string matchfile_postfix = ".individual_datasets.matches.txt";
-  if (argc >= 4) {
-    matchfile_postfix = std::string(argv[3]);
+  if (argc >= 8) {
+    matchfile_postfix = std::string(argv[7]);
   }
 
   std::vector<double> orientation_error(kNumQuery,
                                         std::numeric_limits<double>::max());
   std::vector<double> position_error(kNumQuery,
                                      std::numeric_limits<double>::max());
-  int num_poses_within_threshold = 0;
 
-  const double kPosThresh = 0.05;
-  const double kOrientThresh = 5.0;
+  std::vector<double> position_thresholds = {0.05, 0.03, 0.02, 0.01};
+  std::vector<double> orientation_thresholds = {5.0, 3.0, 2.0, 1.0};
+  const int kNumThresholds = 4;
+  std::vector<int> num_poses_within_threshold(kNumThresholds, 0);
 
   double mean_ransac_time = 0.0;
 
@@ -222,7 +240,7 @@ int main(int argc, char** argv) {
     Points3D points3D;
     std::string matchfile(query_data[i].name);
     matchfile.append(matchfile_postfix);
-    if (!LoadMatches(matchfile, &points2D, &points3D)) {
+    if (!LoadMatches(matchfile, invert_Y_Z, &points2D, &points3D)) {
       std::cerr << "  ERROR: Could not load matches from " << matchfile
                 << std::endl;
       continue;
@@ -237,6 +255,13 @@ int main(int argc, char** argv) {
     std::cout << "  " << i << " " << query_data[i].name << " "
               << query_data[i].focal_x << " " << query_data[i].focal_y
               << std::endl;
+
+    if (!points_centered) {
+      for (int j = 0; j < kNumMatches; ++j) {
+        points2D[j][0] -= query_data[i].c_x;
+        points2D[j][1] -= query_data[i].c_y;
+      }
+    }
     opengv::bearingVectors_t rays;
     CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
@@ -248,7 +273,7 @@ int main(int argc, char** argv) {
     //    options.num_lsq_iterations_ = 0;
     //    options.num_lo_steps_ = 0;
     options.num_lsq_iterations_ = 4;
-    options.num_lo_steps_ = 5;
+    options.num_lo_steps_ = atoi(argv[4]);
     options.lo_starting_iterations_ = 20;
     options.final_least_squares_ = true;
     //    options.threshold_multiplier_ = 2.0;
@@ -256,7 +281,7 @@ int main(int argc, char** argv) {
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
 
-    const double kInThreshPX = 6.0;
+    const double kInThreshPX = static_cast<double>(atof(argv[3]));
     options.squared_inlier_threshold_ = kInThreshPX * kInThreshPX;
 
     CalibratedAbsolutePoseEstimator solver(
@@ -287,8 +312,8 @@ int main(int argc, char** argv) {
     std::cout << "   ... LOMSAC executed " << ransac_stats.number_lo_iterations
               << " local optimization stages" << std::endl;
 
-    if (num_ransac_inliers < 12) continue;
-    //    if (num_ransac_inliers < 4) continue;
+    //     if (num_ransac_inliers < 12) continue;
+    if (num_ransac_inliers < 4) continue;
 
     Eigen::Matrix3d R = best_model.topLeftCorner<3, 3>();
     Eigen::Vector3d t = -R * best_model.col(3);
@@ -304,8 +329,11 @@ int main(int argc, char** argv) {
     orientation_error[i] = q_error;
     position_error[i] = c_error;
 
-    if (c_error <= kPosThresh && q_error <= kOrientThresh) {
-      ++num_poses_within_threshold;
+    for (int k = 0; k < kNumThresholds; ++k) {
+      if (c_error <= position_thresholds[k] &&
+          q_error <= orientation_thresholds[k]) {
+        num_poses_within_threshold[k] += 1;
+      }
     }
 
     ofs << query_data[i].name << " " << q.w() << " " << q.x() << " " << q.y()
@@ -326,11 +354,13 @@ int main(int argc, char** argv) {
   std::cout << " Median position error: " << median_pos << "m "
             << " Median orientation error: " << median_rot << " deg"
             << std::endl;
-  std::cout << " % images within " << kPosThresh * 100.0 << "cm and "
-            << kOrientThresh << "deg: "
-            << static_cast<double>(num_poses_within_threshold) /
-                   static_cast<double>(kNumQuery) * 100.0
-            << std::endl;
+  for (int k = 0; k < kNumThresholds; ++k) {
+    std::cout << " % images within " << position_thresholds[k] * 100.0
+              << "cm and " << orientation_thresholds[k] << "deg: "
+              << static_cast<double>(num_poses_within_threshold[k]) /
+                     static_cast<double>(kNumQuery) * 100.0
+              << std::endl;
+  }
 
   ofs.close();
   return 0;
