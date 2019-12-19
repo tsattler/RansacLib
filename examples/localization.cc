@@ -115,7 +115,7 @@ bool LoadListAndFocals(const std::string& filename,
 }
 
 // Loads the 2D-3D matches found for that image from a text file.
-bool LoadMatches(const std::string& filename,
+bool LoadMatches(const std::string& filename, bool invert_Y_Z,
                  ransac_lib::calibrated_absolute_pose::Points2D* points2D,
                  ransac_lib::calibrated_absolute_pose::Points3D* points3D) {
   points2D->clear();
@@ -136,9 +136,11 @@ bool LoadMatches(const std::string& filename,
     Eigen::Vector3d p3D;
     s_stream >> p2D[0] >> p2D[1] >> p3D[0] >> p3D[1] >> p3D[2];
 
-    // Inverting the y- and z-coordinate due to my choice of coordinate system.
-//     p3D[1] *= -1.0;
-//     p3D[2] *= -1.0;
+    if (invert_Y_Z) {
+      // Inverting the y- and z-coordinate due to a choice of coordinate system.
+      p3D[1] *= -1.0;
+      p3D[2] *= -1.0;
+    }
 
     points2D->push_back(p2D);
     points3D->push_back(p3D);
@@ -156,9 +158,13 @@ int main(int argc, char** argv) {
   using ransac_lib::calibrated_absolute_pose::Points3D;
 
   std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
-            << "inlier_threshold num_lo_steps [match-file postfix]"
+            << "inlier_threshold num_lo_steps invert_Y_Z points_centered "
+            << "[match-file postfix]"
             << std::endl;
-  if (argc < 5) return -1;
+  if (argc < 7) return -1;
+  
+  bool invert_Y_Z = static_cast<bool>(atoi(argv[5]));
+  bool points_centered = static_cast<bool>(atoi(argv[6]));
 
   std::vector<QueryData> query_data;
   std::string list(argv[1]);
@@ -177,8 +183,8 @@ int main(int argc, char** argv) {
   }
 
   std::string matchfile_postfix = ".individual_datasets.matches.txt";
-  if (argc >= 6) {
-    matchfile_postfix = std::string(argv[5]);
+  if (argc >= 8) {
+    matchfile_postfix = std::string(argv[7]);
   }
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
@@ -187,7 +193,7 @@ int main(int argc, char** argv) {
     Points3D points3D;
     std::string matchfile(query_data[i].name);
     matchfile.append(matchfile_postfix);
-    if (!LoadMatches(matchfile, &points2D, &points3D)) {
+    if (!LoadMatches(matchfile, invert_Y_Z, &points2D, &points3D)) {
       std::cerr << "  ERROR: Could not load matches from " << matchfile
                 << std::endl;
       continue;
@@ -226,9 +232,11 @@ int main(int argc, char** argv) {
               << query_data[i].focal_x << " " << query_data[i].focal_y
               << std::endl;
     opengv::bearingVectors_t rays;
-    for (int j = 0; j < kNumMatches; ++j) {
-      points2D[j][0] -= query_data[i].c_x;
-      points2D[j][1] -= query_data[i].c_y;
+    if (!points_centered) {
+      for (int j = 0; j < kNumMatches; ++j) {
+        points2D[j][0] -= query_data[i].c_x;
+        points2D[j][1] -= query_data[i].c_y;
+      }
     }
     CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
