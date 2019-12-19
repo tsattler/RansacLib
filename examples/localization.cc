@@ -177,8 +177,8 @@ int main(int argc, char** argv) {
   }
 
   std::string matchfile_postfix = ".individual_datasets.matches.txt";
-  if (argc >= 4) {
-    matchfile_postfix = std::string(argv[3]);
+  if (argc >= 6) {
+    matchfile_postfix = std::string(argv[5]);
   }
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
