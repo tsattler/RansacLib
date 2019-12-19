@@ -156,8 +156,9 @@ int main(int argc, char** argv) {
   using ransac_lib::calibrated_absolute_pose::Points3D;
 
   std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
-            << "[match-file postfix]" << std::endl;
-  if (argc < 3) return -1;
+            << "inlier_threshold num_lo_steps [match-file postfix]"
+            << std::endl;
+  if (argc < 5) return -1;
 
   std::vector<QueryData> query_data;
   std::string list(argv[1]);
@@ -237,14 +238,14 @@ int main(int argc, char** argv) {
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     options.num_lsq_iterations_ = 4;
-    options.num_lo_steps_ = 10;
+    options.num_lo_steps_ = atoi(argv[4]);
     options.lo_starting_iterations_ = 20;
     options.final_least_squares_ = true;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
 
-    const double kInThreshPX = 20.0;
+    const double kInThreshPX = static_cast<double>(atof(argv[3]));
     options.squared_inlier_threshold_ = kInThreshPX * kInThreshPX;
 
     CalibratedAbsolutePoseEstimator solver(
