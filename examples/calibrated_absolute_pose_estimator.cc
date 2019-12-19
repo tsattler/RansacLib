@@ -189,6 +189,7 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
   options.minimizer_progress_to_stdout = false;
+  options.logging_type = ceres::SILENT;
   //  options.function_tolerance = 0.000001;
   ceres::Solver::Summary summary;
   ceres::Solve(options, &refinement_problem, &summary);
