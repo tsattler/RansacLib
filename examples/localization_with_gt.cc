@@ -344,18 +344,41 @@ int main(int argc, char** argv) {
   std::sort(orientation_error.begin(), orientation_error.end());
   std::sort(position_error.begin(), position_error.end());
 
+  std::string statistics_file(argv[2]);
+  statistics_file.append(".stats.txt");
+  std::ofstream ofs_stats(statistics_file.c_str(), std::ios::out);
+  if (!ofs_stats.is_open()) {
+    std::cerr << " ERROR: Cannot write to " << statistics_file << std::endl;
+    return -1;
+  }
+  
   std::cout << std::endl
             << " Mean RANSAC time: "
             << mean_ransac_time / static_cast<double>(kNumQuery) << " s "
             << std::endl;
+  ofs_stats << std::endl
+            << " Mean RANSAC time: "
+            << mean_ransac_time / static_cast<double>(kNumQuery) << " s "
+            << std::endl;
 
+  
+  
   double median_pos = ComputeMedian<double>(&position_error);
   double median_rot = ComputeMedian<double>(&orientation_error);
   std::cout << " Median position error: " << median_pos << "m "
             << " Median orientation error: " << median_rot << " deg"
             << std::endl;
+  ofs_stats << " Median position error: " << median_pos << "m "
+            << " Median orientation error: " << median_rot << " deg"
+            << std::endl;
+  
   for (int k = 0; k < kNumThresholds; ++k) {
     std::cout << " % images within " << position_thresholds[k] * 100.0
+              << "cm and " << orientation_thresholds[k] << "deg: "
+              << static_cast<double>(num_poses_within_threshold[k]) /
+                     static_cast<double>(kNumQuery) * 100.0
+              << std::endl;
+    ofs_stats << " % images within " << position_thresholds[k] * 100.0
               << "cm and " << orientation_thresholds[k] << "deg: "
               << static_cast<double>(num_poses_within_threshold[k]) /
                      static_cast<double>(kNumQuery) * 100.0
@@ -363,5 +386,6 @@ int main(int argc, char** argv) {
   }
 
   ofs.close();
+  ofs_stats.close();
   return 0;
 }
