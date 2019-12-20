@@ -47,7 +47,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     Eigen::Matrix<double,3,4> P = Eigen::MatrixXd::Zero(3,4);
     bool success = cameraPoseRANSAC(x,X,nIter,tol,P,numInliers);
     if (!success)
-        mexWarnMsgTxt("Could not find a solution to the 3 point problem.");
+    {
+        numInliers = 0;
+    }
 
     // Create output
     plhs[0] = mxCreateDoubleMatrix(P.rows(),4,mxREAL);
