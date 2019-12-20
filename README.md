@@ -161,7 +161,7 @@ If you are using the library for (scientific) publications, please cite the foll
 ```
 @misc{Sattler2019Github,
   title = {{RansacLib - A Template-based *SAC Implementation}},
-  author = {Torsten Sattler},
+  author = {Torsten Sattler and others},
   URL = {https://github.com/tsattler/RansacLib},
   year = {2019}
 }
