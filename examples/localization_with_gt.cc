@@ -51,8 +51,6 @@
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
 
-typedef Eigen::Matrix<uint8_t, 128, 1> NetVLADVector;
-
 template <typename T>
 double ComputeMedian(std::vector<T>* data) {
   T mean = static_cast<T>(0.0);
@@ -176,56 +174,7 @@ bool LoadMatches(const std::string& filename, bool invert_Y_Z,
   return true;
 }
 
-double ComputeMeanReprojectionError(
-    const Eigen::Quaterniond& q, const Eigen::Vector3d& t,
-    const ransac_lib::calibrated_absolute_pose::Points2D& points2D,
-    const ransac_lib::calibrated_absolute_pose::Points3D& points3D,
-    const QueryData& query_data, const std::vector<int>& inlier_ids) {
-  Eigen::Matrix3d R(q);
-
-  double squared_reprojection_error = 0.0;
-  for (int idx : inlier_ids) {
-    Eigen::Vector3d p = R * points3D[idx] + t;
-    Eigen::Vector2d p_img = p.hnormalized();
-    p_img[0] *= query_data.focal_x;
-    p_img[1] *= query_data.focal_y;
-
-    squared_reprojection_error += (p_img - points2D[idx]).norm();
-//    std::cout << idx << " " << (p_img - points2D[idx]).norm() << std::endl;
-  }
-
-  return squared_reprojection_error / static_cast<double>(inlier_ids.size());
-}
-
 int main(int argc, char** argv) {
-  {
-    // Experiments with random NetVLAD descriptors.
-    NetVLADVector query;
-    std::vector<NetVLADVector, Eigen::aligned_allocator<NetVLADVector>> train;
-    const int kN = 100;
-    train.resize(kN);
-    for (int i = 0; i < 10; ++i) {
-      for (int j = 0; j < kN; ++j) {
-        train[j] = NetVLADVector::Random();
-      }
-      query = NetVLADVector::Random();
-      // Simple timing experiments for descriptor matching.
-      auto time_start = std::chrono::system_clock::now();
-      int min_dist = std::numeric_limits<int>::max();
-      int argmin = -1;
-      for (int j = 0; j < kN; ++j) {
-        int dist = (train[j].cast<int>() - query.cast<int>()).squaredNorm();
-        if (dist < min_dist) {
-          min_dist = dist;
-          argmin = j;
-        }
-      }
-      auto time_end = std::chrono::system_clock::now();
-      std::chrono::duration<double> elapsed_seconds = time_end - time_start;
-      std::cout << argmin << " " << min_dist << " " << elapsed_seconds.count() << std::endl;
-    }
-  }
-  
   using ransac_lib::LocallyOptimizedMSAC;
   using ransac_lib::calibrated_absolute_pose::CalibratedAbsolutePoseEstimator;
   using ransac_lib::calibrated_absolute_pose::CameraPose;
@@ -250,16 +199,6 @@ int main(int argc, char** argv) {
   }
   const int kNumQuery = static_cast<int>(query_data.size());
   std::cout << " Found " << kNumQuery << " query images " << std::endl;
-
-  double mean_focal = 0.0;
-  for (int i = 0; i < kNumQuery; ++i) {
-    mean_focal += query_data[i].focal_x;
-  }
-  mean_focal /= static_cast<double>(kNumQuery);
-  //  for (int i = 0; i < kNumQuery; ++i) {
-  //    query_data[i].focal_x = mean_focal;
-  //    query_data[i].focal_y = mean_focal;
-  //  }
 
   std::ofstream ofs(argv[2], std::ios::out);
   if (!ofs.is_open()) {
@@ -321,7 +260,7 @@ int main(int argc, char** argv) {
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 
     ransac_lib::LORansacOptions options;
-    options.min_num_iterations_ = 200u;
+    options.min_num_iterations_ = 100u;
     options.max_num_iterations_ = 10000u;
     options.min_sample_multiplicator_ = 7;
     //    options.num_lsq_iterations_ = 0;
@@ -393,63 +332,6 @@ int main(int argc, char** argv) {
     ofs << query_data[i].name << " " << q.w() << " " << q.x() << " " << q.y()
         << " " << q.z() << " " << t[0] << " " << t[1] << " " << t[2]
         << std::endl;
-
-    double sqr_reproj_error_gt = ComputeMeanReprojectionError(
-        query_data[i].q, t_gt, points2D, points3D, query_data[i],
-        ransac_stats.inlier_indices);
-
-    double sqr_reproj_error_est = ComputeMeanReprojectionError(
-        q, t, points2D, points3D, query_data[i], ransac_stats.inlier_indices);
-    std::cout << " Reprojection errors: " << sqr_reproj_error_gt << " vs. "
-              << sqr_reproj_error_est << std::endl;
-    
-    if (c_error < kPosThreshFine && q_error < kOrientThreshFine) {
-      ++num_poses_within_fine_threshold;
-      ++num_reproj_tested;
-      if (sqr_reproj_error_est < sqr_reproj_error_gt) {
-        ++num_better_reprojection_error_than_gt;
-      }
-    }
-    
-    if (c_error < kPosThreshCoarse && q_error < kOrientThreshCoarse) {
-      ++num_poses_within_coarse_threshold;
-    }
-    
-    std::cout << " ERROR: " << c_error << " m " << q_error << " deg"
-              << std::endl;
-    {
-      Eigen::MatrixXd coverage(10, 10);
-      Eigen::MatrixXi counter(10, 10);
-      coverage = Eigen::MatrixXd::Zero(10, 10);
-      counter = Eigen::MatrixXi::Zero(10, 10);
-      double side_w = static_cast<int>(query_data[i].width) / 10.0;
-      double side_h = static_cast<int>(query_data[i].height) / 10.0;
-      std::cout << side_w << " " << side_h << std::endl;
-      for (const int idx : ransac_stats.inlier_indices) {
-//        std::cout << idx << std::endl;
-        Eigen::Vector3d p = R * points3D[idx] + t;
-        Eigen::Vector2d p_img = p.hnormalized();
-        p_img[0] *= query_data[i].focal_x;
-        p_img[1] *= query_data[i].focal_y;
-        double p_x = points2D[idx][0] + query_data[i].c_x;
-        int x = static_cast<int>(std::floor(p_x / side_w));
-        x = std::min(x, 9);
-        x = std::max(x, 0);
-        double p_y = points2D[idx][1] + query_data[i].c_y;
-        int y = static_cast<int>(std::floor(p_y / side_h));
-        y = std::min(y, 9);
-        y = std::max(y, 0);
-        double error = (p_img - points2D[idx]).norm();
-//        std::cout << error << " " << p_img.transpose() << " " << points2D[idx].transpose() << std::endl;
-        coverage(y, x) = (coverage(y, x) * static_cast<double>(counter(y, x)) + error) / static_cast<double>(counter(y, x) + 1);
-        counter(y, x) += 1;
-//        std::cout << " " << p_x << " " << p_y << " " << x << " " << y << std::endl;
-      }
-      if (c_error >= kPosThreshCoarse || q_error >= kOrientThreshCoarse) {
-        std::cout << counter << std::endl;
-        std::cout << coverage << std::endl;
-      }
-    }
   }
 
   std::sort(orientation_error.begin(), orientation_error.end());
@@ -472,12 +354,6 @@ int main(int argc, char** argv) {
                      static_cast<double>(kNumQuery) * 100.0
               << std::endl;
   }
-
-  std::cout << " Num images with better reprojection error than gt: "
-            << num_better_reprojection_error_than_gt << " ("
-            << static_cast<double>(num_better_reprojection_error_than_gt) /
-                   static_cast<double>(num_reproj_tested) * 100.0
-            << ")" << std::endl;
   ofs.close();
   return 0;
 }
