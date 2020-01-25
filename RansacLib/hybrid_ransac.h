@@ -219,7 +219,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
         // Finds the best model among all estimated models.
         double best_local_score = std::numeric_limits<double>::max();
         int best_local_model_id = 0;
-        GetBestEstimatedModelId(options, solver, estimated_models,
+        GetBestEstimatedModelId(options, solver,
+                                estimated_models, kNumEstimatedModels,
                                 kSqrInlierThresh, kNumDataTypes, num_data,
                                 &best_local_score, &best_local_model_id);
 
@@ -381,15 +382,14 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
 
   void GetBestEstimatedModelId(
       const HybridLORansacOptions& options, const HybridSolver& solver,
-      const ModelVector& models,
+      const ModelVector& models, const int num_models,
       const std::vector<double>& squared_inlier_thresholds,
       const int num_data_types, const std::vector<int> num_data,
       double* best_score, int* best_model_id) const {
     *best_score = std::numeric_limits<double>::max();
     *best_model_id = 0;
 
-    const int kNumEstimatedModels = static_cast<int>(models.size());
-    for (int m = 0; m < kNumEstimatedModels; ++m) {
+    for (int m = 0; m < num_models; ++m) {
       double score = std::numeric_limits<double>::max();
       ScoreModel(options, solver, models[m], squared_inlier_thresholds,
                  num_data_types, num_data, &score);

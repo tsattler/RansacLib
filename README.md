@@ -161,7 +161,7 @@ If you are using the library for (scientific) publications, please cite the foll
 ```
 @misc{Sattler2019Github,
   title = {{RansacLib - A Template-based *SAC Implementation}},
-  author = {Torsten Sattler},
+  author = {Torsten Sattler and others},
   URL = {https://github.com/tsattler/RansacLib},
   year = {2019}
 }
@@ -187,7 +187,7 @@ Please cite also the original publications of the different methods:
 ```
 * When using the ```LocallyOptimizedHybridMSAC``` implementatio in [ransac.h](https://github.com/tsattler/RansacLib/blob/master/RansacLib/ransac.h), please cite
 ```
-@inproceedings{Lebeda2012BMVC,
+@inproceedings{Camposeco2018CPVR,
 title = {{Hybrid Camera Pose Estimation}},
 author = {Federico Camposeco and Andrea Cohen and Marc Pollefeys and Torsten Sattler},
 booktitle = {Conference on Computer Vision and Pattern Recognition (CVPR)},

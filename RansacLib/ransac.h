@@ -184,7 +184,8 @@ class LocallyOptimizedMSAC : public RansacBase {
       // Finds the best model among all estimated models.
       double best_local_score = std::numeric_limits<double>::max();
       int best_local_model_id = 0;
-      GetBestEstimatedModelId(solver, estimated_models, kSqrInlierThresh,
+      GetBestEstimatedModelId(solver, estimated_models, kNumEstimatedModels,
+                              kSqrInlierThresh,
                               &best_local_score, &best_local_model_id);
 
       // Updates the best model found so far.
@@ -270,13 +271,13 @@ class LocallyOptimizedMSAC : public RansacBase {
   }
 
  protected:
-  void GetBestEstimatedModelId(const Solver& solver, const ModelVector& models,
+  void GetBestEstimatedModelId(const Solver& solver,
+                               const ModelVector& models, const int num_models,
                                const double squared_inlier_threshold,
                                double* best_score, int* best_model_id) const {
     *best_score = std::numeric_limits<double>::max();
     *best_model_id = 0;
-    const int kNumEstimatedModels = static_cast<int>(models.size());
-    for (int m = 0; m < kNumEstimatedModels; ++m) {
+    for (int m = 0; m < num_models; ++m) {
       double score = std::numeric_limits<double>::max();
       ScoreModel(solver, models[m], squared_inlier_threshold, &score);
 
@@ -411,6 +412,7 @@ class LocallyOptimizedMSAC : public RansacBase {
         options.min_sample_multiplicator_ * solver.min_sample_size();
     std::vector<int> inliers;
     int num_inliers = GetInliers(solver, *model, thresh, &inliers);
+    if (num_inliers < solver.min_sample_size()) return;
     int lsq_data_size = std::min(kLSqSampleSize, num_inliers);
     utils::RandomShuffleAndResize(lsq_data_size, rng, &inliers);
     solver.LeastSquares(inliers, model);

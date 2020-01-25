@@ -6,7 +6,7 @@ endif ()
 
 #SET(CMAKE_CXX_FLAGS "-std=gnu++17")
 
-find_package (Eigen REQUIRED)
+find_package (Eigen3 REQUIRED)
 
 find_package (opengv REQUIRED)
 
