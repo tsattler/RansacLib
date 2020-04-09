@@ -43,11 +43,11 @@
 namespace ransac_lib {
 
 // Implements uniform sampling for RANSAC.
+template <class Solver>
 class UniformSampling {
  public:
-  UniformSampling(const unsigned int random_seed, const int num_data,
-                  const int sample_size)
-      : num_data_(num_data), sample_size_(sample_size) {
+  UniformSampling(const unsigned int random_seed, const Solver& solver)
+      : num_data_(solver.num_data()), sample_size_(solver.min_sample_size()) {
     rng_.seed(random_seed);
     draw_sample_ = DrawBetterThanShuffle(sample_size_, num_data_);
     uniform_dstr_.param(

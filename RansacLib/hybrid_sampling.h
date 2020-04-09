@@ -43,11 +43,12 @@
 namespace ransac_lib {
 
 // Implements uniform sampling for HybridRANSAC.
+template <class Solver>
 class HybridUniformSampling {
  public:
   HybridUniformSampling(const unsigned int random_seed,
-                        const std::vector<int>& num_data)
-      : num_data_(num_data) {
+                        const Solver& solver) {
+    solver.num_data(&num_data_);
     rng_.seed(random_seed);
     num_data_types_ = static_cast<int>(num_data_.size());
 
@@ -141,10 +142,13 @@ class HybridUniformSampling {
 // Implements a biased sampling for HybridRANSAC, where each data point has
 // an associated weight and points with a higher weight are more likely to be
 // sampled. Points with weight 0 are ignored during sampling.
+template <class Solver>
 class HybridBiasedSampling {
  public:
   HybridBiasedSampling(const unsigned int random_seed,
-                       const std::vector<std::vector<double>>& weights) {
+                       const Solver& solver) {
+    std::vector<std::vector<double>> weights;
+    solver.get_weights(weights);
     rng_.seed(random_seed);
     num_data_types_ = static_cast<int>(weights.size());
 

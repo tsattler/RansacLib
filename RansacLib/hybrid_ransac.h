@@ -123,7 +123,8 @@ class HybridRansacBase {
 // Pose Estimation, CVPR 2018] and [Lebeda, Matas, Chum, Fixing the Locally
 // Optimized RANSAC, BMVC 2012]. Iteratively re-weighted least-squares
 // optimization is optional.
-template <class Model, class ModelVector, class HybridSolver>
+template <class Model, class ModelVector, class HybridSolver,
+          class Sampler = HybridUniformSampling<HybridSolver> >
 class HybridLocallyOptimizedMSAC : public HybridRansacBase {
  public:
   // Estimates a model using a given solver. Notice that the solver contains
@@ -159,7 +160,7 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       return 0;
     }
 
-    HybridUniformSampling sampler(options.random_seed_, num_data);
+    Sampler sampler(options.random_seed_, solver);
 
     uint32_t max_num_iterations =
         std::max(options.max_num_iterations_, options.min_num_iterations_);
