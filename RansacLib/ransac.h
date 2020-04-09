@@ -116,7 +116,8 @@ class RansacBase {
 // Implements LO-RANSAC with MSAC (top-hat) scoring, based on the description
 // provided in [Lebeda, Matas, Chum, Fixing the Locally Optimized RANSAC, BMVC
 // 2012]. Iteratively re-weighted least-squares optimization is optional.
-template <class Model, class ModelVector, class Solver>
+template <class Model, class ModelVector, class Solver,
+          class Sampler = UniformSampling<Solver> >
 class LocallyOptimizedMSAC : public RansacBase {
  public:
   // Estimates a model using a given solver. Notice that the solver contains
@@ -138,7 +139,7 @@ class LocallyOptimizedMSAC : public RansacBase {
     }
 
     // Initializes variables, etc.
-    UniformSampling sampler(options.random_seed_, kNumData, kMinSampleSize);
+    Sampler sampler(options.random_seed_, solver);
     std::mt19937 rng;
     rng.seed(options.random_seed_);
 
