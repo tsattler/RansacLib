@@ -129,6 +129,10 @@ bool LoadListIntrinsicsAndExtrinsics(const std::string& filename,
       q.radial.resize(1);
       s_stream >> q.focal_x >> q.c_x >> q.c_y >> q.radial[0];
       q.focal_y = q.focal_x;
+    } else if (camera_type.compare("BROWN_3_PARAMS") == 0) {
+      q.radial.resize(3);
+      s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y >> q.radial[0]
+               >> q.radial[1] >> q.radial[2];
     }
     s_stream >> q.q.w() >> q.q.x() >> q.q.y() >> q.q.z() >> q.c[0] >> q.c[1] >>
         q.c[2];
@@ -215,6 +219,14 @@ int main(int argc, char** argv) {
     std::cerr << " ERROR: Cannot write to " << argv[2] << std::endl;
     return -1;
   }
+  
+  std::string runtimes_file(argv[2]);
+  runtimes_file.append(".times.txt");
+  std::ofstream ofs_times(runtimes_file.c_str(), std::ios::out);
+  if (!ofs_times.is_open()) {
+    std::cerr << " ERROR: Cannot write to " << runtimes_file << std::endl;
+    return -1;
+  }
 
   std::string matchfile_postfix = ".individual_datasets.matches.txt";
   if (argc >= 8) {
@@ -274,7 +286,7 @@ int main(int argc, char** argv) {
     //    options.num_lo_steps_ = 0;
     options.num_lsq_iterations_ = 4;
     options.num_lo_steps_ = atoi(argv[4]);
-    options.lo_starting_iterations_ = 20;
+    options.lo_starting_iterations_ = 60;
     options.final_least_squares_ = true;
     //    options.threshold_multiplier_ = 2.0;
 
@@ -312,6 +324,7 @@ int main(int argc, char** argv) {
     std::cout << "   ... LOMSAC executed " << ransac_stats.number_lo_iterations
               << " local optimization stages" << std::endl;
 
+    ofs_times << elapsed_seconds.count() << std::endl;
     //     if (num_ransac_inliers < 12) continue;
     if (num_ransac_inliers < 4) continue;
 
@@ -387,5 +400,6 @@ int main(int argc, char** argv) {
 
   ofs.close();
   ofs_stats.close();
+  ofs_times.close();
   return 0;
 }

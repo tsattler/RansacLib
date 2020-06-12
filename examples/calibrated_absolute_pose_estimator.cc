@@ -136,13 +136,23 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
 // Implemented by a simple linear least squares solver.
 int CalibratedAbsolutePoseEstimator::NonMinimalSolver(
     const std::vector<int>& sample, CameraPose* pose) const {
-  CameraPose P = opengv::absolute_pose::epnp(adapter_, sample);
-  // OpenGV returns the transformation from the camera to the world coordinate
-  // system. We store the rotation from the world to the local coordinate
-  // system instead.
-  *pose = P;
-  pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
-  return 1;
+  // Alternative: Run minimal solver and polish.
+  CameraPoses poses;
+  if (MinimalSolver(sample, &poses) == 1) {
+    *pose = poses[0];
+    LeastSquares(sample, pose);
+    return 1;
+  } else {
+    return 0;
+  }
+      
+//   CameraPose P = opengv::absolute_pose::epnp(adapter_, sample);
+//   // OpenGV returns the transformation from the camera to the world coordinate
+//   // system. We store the rotation from the world to the local coordinate
+//   // system instead.
+//   *pose = P;
+//   pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
+//   return 1;
 }
 
 // Evaluates the pose on the i-th data point.
@@ -183,7 +193,14 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
     ceres::CostFunction* cost_function =
         NormalizedReprojectionError::CreateCost(
             p_img[0], p_img[1], p_3D[0], p_3D[1], p_3D[2], focal_x_, focal_y_);
+//     double error_i = std::sqrt(EvaluateModelOnPoint(*pose, sample[i]));
+//     error_i = std::max(0.00001, error_i);
     refinement_problem.AddResidualBlock(cost_function, nullptr, camera);
+//     refinement_problem.AddResidualBlock(cost_function,
+//                                         new ceres::ScaledLoss(nullptr,
+//                                                               1.0 / error_i,
+//                                                               ceres::DO_NOT_TAKE_OWNERSHIP),
+//                                         camera);
   }
 
   ceres::Solver::Options options;

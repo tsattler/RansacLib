@@ -105,6 +105,10 @@ bool LoadListAndFocals(const std::string& filename,
       q.radial.resize(1);
       s_stream >> q.focal_x >> q.c_x >> q.c_y >> q.radial[0];
       q.focal_y = q.focal_x;
+    } else if (camera_type.compare("BROWN_3_PARAMS") == 0) {
+      q.radial.resize(3);
+      s_stream >> q.focal_x >> q.focal_y >> q.c_x >> q.c_y >> q.radial[0]
+               >> q.radial[1] >> q.radial[2];
     }
     query_images->push_back(q);
   }

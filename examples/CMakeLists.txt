@@ -34,5 +34,8 @@ target_link_libraries (localization opengv
 add_executable (localization_with_gt localization_with_gt.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
 target_link_libraries (localization_with_gt opengv ${CERES_LIBRARIES})
 
+add_executable (localization_with_gt_colmap localization_with_gt_colmap.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
+target_link_libraries (localization_with_gt_colmap opengv ${CERES_LIBRARIES})
+
 #add_executable (localization_gc localization_gc.cc #calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
 #target_link_libraries (localization opengv)
