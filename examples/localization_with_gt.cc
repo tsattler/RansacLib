@@ -204,16 +204,6 @@ int main(int argc, char** argv) {
   const int kNumQuery = static_cast<int>(query_data.size());
   std::cout << " Found " << kNumQuery << " query images " << std::endl;
 
-  double mean_focal = 0.0;
-  for (int i = 0; i < kNumQuery; ++i) {
-    mean_focal += query_data[i].focal_x;
-  }
-  mean_focal /= static_cast<double>(kNumQuery);
-  //  for (int i = 0; i < kNumQuery; ++i) {
-  //    query_data[i].focal_x = mean_focal;
-  //    query_data[i].focal_y = mean_focal;
-  //  }
-
   std::ofstream ofs(argv[2], std::ios::out);
   if (!ofs.is_open()) {
     std::cerr << " ERROR: Cannot write to " << argv[2] << std::endl;
@@ -244,6 +234,9 @@ int main(int argc, char** argv) {
   std::vector<int> num_poses_within_threshold(kNumThresholds, 0);
 
   double mean_ransac_time = 0.0;
+
+  int num_better_reprojection_error_than_gt = 0;
+  int num_reproj_tested = 0;
 
   for (int i = 0; i < kNumQuery; ++i) {
     std::cout << std::endl << std::endl;
@@ -397,7 +390,6 @@ int main(int argc, char** argv) {
                      static_cast<double>(kNumQuery) * 100.0
               << std::endl;
   }
-
   ofs.close();
   ofs_stats.close();
   ofs_times.close();
