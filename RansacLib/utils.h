@@ -152,7 +152,8 @@ inline uint32_t NumRequiredIterations(const std::vector<double> inlier_ratios,
 
   const double kProbNonInlierSample = 1.0 - prob_all_inlier_sample;
   const double kLogNumerator = std::log(prob_missing_best_model);
-  const double kLogDenominator = std::log(kProbNonInlierSample);
+  const double kLogDenominator = std::max(std::log(kProbNonInlierSample),
+                                          std::numeric_limits<double>::min());
 
   double num_iters = std::ceil(kLogNumerator / kLogDenominator + 0.5);
   uint32_t num_req_iterations =
