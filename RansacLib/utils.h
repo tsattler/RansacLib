@@ -121,6 +121,14 @@ inline uint32_t NumRequiredIterations(const double inlier_ratio,
 
   const double kProbNonInlierSample =
       1.0 - std::pow(inlier_ratio, static_cast<double>(sample_size));
+  // If the probability of sampling a non-all-inlier sample is at least
+  // 0.99999999999999, RANSAC will take at least 1e+13 iterations for 
+  // realistic values for prob_missing_best_model (0.5 or smaller).
+  // In practice, max_iterations will be smaller.
+  if (kProbNonInlierSample >= 0.99999999999999) {
+    return max_iterations;
+  }
+  
   const double kLogNumerator = std::log(prob_missing_best_model);
   const double kLogDenominator = std::log(kProbNonInlierSample);
 
@@ -151,6 +159,14 @@ inline uint32_t NumRequiredIterations(const std::vector<double> inlier_ratios,
   }
 
   const double kProbNonInlierSample = 1.0 - prob_all_inlier_sample;
+  // If the probability of sampling a non-all-inlier sample is at least
+  // 0.99999999999999, RANSAC will take at least 1e+13 iterations for 
+  // realistic values for prob_missing_best_model (0.5 or smaller).
+  // In practice, max_iterations will be smaller.
+  if (kProbNonInlierSample >= 0.99999999999999) {
+    return max_iterations;
+  }
+  
   const double kLogNumerator = std::log(prob_missing_best_model);
   const double kLogDenominator = std::log(kProbNonInlierSample);
 
