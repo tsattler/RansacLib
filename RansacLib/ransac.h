@@ -366,7 +366,7 @@ class LocallyOptimizedMSAC : public RansacBase {
                     best_minimal_model);
 
     std::vector<int> inliers_base;
-    GetInliers(solver, m_init, kSqInThresh, &inliers_base);
+    GetInliers(solver, m_init, kSqInThresh * kThreshMult, &inliers_base);
 
     // Determines the size of the non-miminal samples drawn in each LO step.
     const int kNonMinSampleSize =

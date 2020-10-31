@@ -281,7 +281,7 @@ int main(int argc, char** argv) {
     options.num_lo_steps_ = atoi(argv[4]);
     options.lo_starting_iterations_ = 60;
     options.final_least_squares_ = true;
-    //    options.threshold_multiplier_ = 2.0;
+    options.threshold_multiplier_ = 16.0;
 
     std::random_device rand_dev;
     options.random_seed_ = rand_dev();
@@ -334,6 +334,10 @@ int main(int argc, char** argv) {
     double q_error = aax.angle() * 180.0 / M_PI;
     orientation_error[i] = q_error;
     position_error[i] = c_error;
+    std::cout << "   pose error: " << c_error << ", " << q_error << std::endl;
+    std::cout << best_model.col(3).transpose() << std::endl;
+    std::cout << q.coeffs().transpose() << std::endl;
+    std::cout << query_data[i].q.coeffs().transpose() <<std::endl;
 
     for (int k = 0; k < kNumThresholds; ++k) {
       if (c_error <= position_thresholds[k] &&

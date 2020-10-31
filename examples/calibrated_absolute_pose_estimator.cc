@@ -185,6 +185,7 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   camera[5] = pose->col(3)[2];
 
   ceres::Problem refinement_problem;
+//  ceres::LossFunction* cauchy_loss = new ceres::CauchyLoss(1.0);
   const int kSampleSize = static_cast<int>(sample.size());
   for (int i = 0; i < kSampleSize; ++i) {
     const int kIdx = sample[i];
@@ -196,6 +197,7 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
 //     double error_i = std::sqrt(EvaluateModelOnPoint(*pose, sample[i]));
 //     error_i = std::max(0.00001, error_i);
     refinement_problem.AddResidualBlock(cost_function, nullptr, camera);
+//    refinement_problem.AddResidualBlock(cost_function, cauchy_loss, camera);
 //     refinement_problem.AddResidualBlock(cost_function,
 //                                         new ceres::ScaledLoss(nullptr,
 //                                                               1.0 / error_i,
@@ -211,6 +213,8 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   ceres::Solve(options, &refinement_problem, &summary);
 
   //  std::cout << summary.BriefReport() << std::endl;
+//  delete cauchy_loss;
+//  cauchy_loss = nullptr;
 
   if (summary.IsSolutionUsable()) {
     Eigen::Vector3d axis(camera[0], camera[1], camera[2]);
