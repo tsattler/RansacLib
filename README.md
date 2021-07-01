@@ -31,6 +31,31 @@ There are currently three dependencies:
 
 **Important**: Eigen requires alignment of [certain types](https://eigen.tuxfamily.org/dox-devel/group__TopicFixedSizeVectorizable.html) when vectorization is used. OpenGV uses vectorization to accelerate some computations. As such, it is critical to compile the examples that depend on OpenGV with exactly the same optimization flags as OpenGV. This should be ensured at the moment for Unix-based systems (Linux, Mac OS X), but we did not test it under Windows. If you are experiencing problems at run-time or during compilation, please compare `examples/CMakeLists.txt` with `opengv/CMakeLists.txt` and if nessecary add additional flags to `examples/CMakeLists.txt`.
 
+### Python bindings
+pybind11 included as a submodule. After cloning the repository, run
+```
+git submodule update --init --recursive
+```
+
+install setuptools
+
+### linux
+```
+python setup.py build install
+```
+
+### Windows with vcpkg
+Set CMAKE_TOOLCHAIN_FILE in your path to your `vcpkg\\scripts\\buildsystems\\vcpkg.cmake` path.
+
+Install Eigen3, Ceres with vcpkg
+
+build PoseLib opengv, then (change the path to opengv with yours)
+in powershell
+```
+$env:CMAKE_PREFIX_PATH='C:\\Workspace\\dev\\opengv\\build'
+py -3.6 setup.py build install
+```
+
 ## Using RansacLib
 RansacLib uses templates to enable easy integration of novel solvers into RANSAC. More precisely, three classes need to be defined: `class Model`, `class ModelVector`, `class Solver`. These classes are explained in more detail in the following:
 
