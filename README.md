@@ -56,6 +56,33 @@ $env:CMAKE_PREFIX_PATH='C:\\Workspace\\dev\\opengv\\build'
 py -3.6 setup.py build install
 ```
 
+### usage
+```python
+import pyransaclib
+
+# Parameters:
+# - image_name: str, name of the image (only used for logging)
+# - fx: float, focal of camera
+# - fy: float, focal of camera
+# - points2D_undistorted: (n, 2) ndarray undistored 2D keypoints, centered (subtract the principal point)
+# - points3D: (n, 2) ndarray 3D points that are observed from the 2D points
+# - inlier_threshold: float, RANSAC inlier threshold in pixel
+# - number_lo_steps: int, number of local optimization iterations in LO-MSAC. Use 0 to use MSAC
+# - min_num_iterations: int, min number of ransac iterations
+# - max_num_iterations: int, max number of ransac iterations
+ret = pyransaclib.ransaclib_localization(image_name, fx, fy,
+                                         points2D_undistorted, points3D,
+                                         inlier_threshold, number_lo_steps,
+                                         min_num_iterations, max_num_iterations)
+# Returns:
+# - dictionary:
+# "success": localization was sucessfull or not
+# "qvec": [w,x,y,z] rotation quaternion from world to camera
+# "tvec": [x,y,z] translation from world to camera
+# "num_inliers": number of inliers selected by ransac
+# "inliers": indices of the inliers in the points2D_undistorted/points3D array
+```
+
 ## Using RansacLib
 RansacLib uses templates to enable easy integration of novel solvers into RANSAC. More precisely, three classes need to be defined: `class Model`, `class ModelVector`, `class Solver`. These classes are explained in more detail in the following:
 
