@@ -37,5 +37,11 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(pyransaclib, m) {
     m.doc() = "RANSACLIB bindings";
-    m.def("ransaclib_localization", &ransaclib_localization, "Absolute pose estimation with non-linear refinement.");
+    m.def("ransaclib_localization", &ransaclib_localization, 
+    py::arg("query_name"), 
+    py::arg("focal_x"), py::arg("focal_y"),
+    py::arg("points2D_vec"), py::arg("points3D_vec"),
+    py::arg("inlier_threshold"), py::arg("number_lo_steps"),
+    py::arg("min_num_iterations"), py::arg("max_num_iterations"),
+    "Absolute pose estimation with non-linear refinement.");
 }

@@ -41,7 +41,7 @@ install setuptools
 
 ### linux
 ```
-python setup.py build install
+pip install ./
 ```
 
 ### Windows with vcpkg
@@ -53,7 +53,7 @@ build PoseLib opengv, then (change the path to opengv with yours)
 in powershell
 ```
 $env:CMAKE_PREFIX_PATH='C:\\Workspace\\dev\\opengv\\build'
-py -3.6 setup.py build install
+py -3.6 -m pip install .
 ```
 
 ### usage
