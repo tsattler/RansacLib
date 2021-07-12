@@ -45,14 +45,19 @@ pip install ./
 ```
 
 ### Windows with vcpkg
-Set CMAKE_TOOLCHAIN_FILE in your path to your `vcpkg\\scripts\\buildsystems\\vcpkg.cmake` path.
+Set the `CMAKE_TOOLCHAIN_FILE` environment variable to your `vcpkg\scripts\buildsystems\vcpkg.cmake` path.
+
+example (powershell)
+```
+$env:CMAKE_TOOLCHAIN_FILE='C:\Workspace\vcpkg\scripts\buildsystems\vcpkg.cmake'
+```
 
 Install Eigen3, Ceres with vcpkg
 
 build PoseLib opengv, then (change the path to opengv with yours)
 in powershell
 ```
-$env:CMAKE_PREFIX_PATH='C:\\Workspace\\dev\\opengv\\build'
+$env:CMAKE_PREFIX_PATH='C:\Workspace\dev\opengv\build'
 py -3.6 -m pip install .
 ```
 
