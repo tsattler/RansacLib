@@ -13,6 +13,9 @@ find_package (opengv REQUIRED)
 find_package (Ceres REQUIRED)
 
 add_definitions (-march=native)
+if(MSVC)	
+  add_definitions(-D_USE_MATH_DEFINES)
+endif()
 
 include_directories (
   ${CMAKE_SOURCE_DIR}
@@ -34,8 +37,11 @@ target_link_libraries (localization opengv
 add_executable (localization_with_gt localization_with_gt.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
 target_link_libraries (localization_with_gt opengv ${CERES_LIBRARIES})
 
-add_executable (localization_with_gt_colmap localization_with_gt_colmap.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
-target_link_libraries (localization_with_gt_colmap opengv ${CERES_LIBRARIES})
+#add_executable (localization_with_gt_colmap localization_with_gt_colmap.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
+#target_link_libraries (localization_with_gt_colmap opengv ${CERES_LIBRARIES})
 
 #add_executable (localization_gc localization_gc.cc #calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
 #target_link_libraries (localization opengv)
+
+pybind11_add_module(pyransaclib pyransaclib.cc calibrated_absolute_pose_estimator.cc calibrated_absolute_pose_estimator.h)
+target_link_libraries(pyransaclib PRIVATE opengv ${CERES_LIBRARIES})
