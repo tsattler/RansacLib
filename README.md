@@ -31,6 +31,63 @@ There are currently three dependencies:
 
 **Important**: Eigen requires alignment of [certain types](https://eigen.tuxfamily.org/dox-devel/group__TopicFixedSizeVectorizable.html) when vectorization is used. OpenGV uses vectorization to accelerate some computations. As such, it is critical to compile the examples that depend on OpenGV with exactly the same optimization flags as OpenGV. This should be ensured at the moment for Unix-based systems (Linux, Mac OS X), but we did not test it under Windows. If you are experiencing problems at run-time or during compilation, please compare `examples/CMakeLists.txt` with `opengv/CMakeLists.txt` and if nessecary add additional flags to `examples/CMakeLists.txt`.
 
+### Python bindings
+pybind11 included as a submodule. After cloning the repository, run
+```
+git submodule update --init --recursive
+```
+
+install setuptools
+
+### linux
+```
+pip install ./
+```
+
+### Windows with vcpkg
+Set the `CMAKE_TOOLCHAIN_FILE` environment variable to your `vcpkg\scripts\buildsystems\vcpkg.cmake` path.
+
+example (powershell)
+```
+$env:CMAKE_TOOLCHAIN_FILE='C:\Workspace\vcpkg\scripts\buildsystems\vcpkg.cmake'
+```
+
+Install Eigen3, Ceres with vcpkg
+
+build PoseLib opengv, then (change the path to opengv with yours)
+in powershell
+```
+$env:CMAKE_PREFIX_PATH='C:\Workspace\dev\opengv\build'
+py -3.6 -m pip install .
+```
+
+### usage
+```python
+import pyransaclib
+
+# Parameters:
+# - image_name: str, name of the image (only used for logging)
+# - fx: float, focal of camera
+# - fy: float, focal of camera
+# - points2D_undistorted: (n, 2) ndarray undistored 2D keypoints, centered (subtract the principal point)
+# - points3D: (n, 2) ndarray 3D points that are observed from the 2D points
+# - inlier_threshold: float, RANSAC inlier threshold in pixel
+# - number_lo_steps: int, number of local optimization iterations in LO-MSAC. Use 0 to use MSAC
+# - min_num_iterations: int, min number of ransac iterations
+# - max_num_iterations: int, max number of ransac iterations
+ret = pyransaclib.ransaclib_localization(image_name, fx, fy,
+                                         points2D_undistorted, points3D,
+                                         inlier_threshold, number_lo_steps,
+                                         min_num_iterations, max_num_iterations)
+# Returns:
+# - dictionary:
+# "success": localization was sucessfull or not
+# "qvec": [w,x,y,z] rotation quaternion from world to camera
+# "tvec": [x,y,z] translation from world to camera
+# "num_inliers": number of inliers selected by ransac
+# "inliers": indices of the inliers in the points2D_undistorted/points3D array
+```
+
 ## Using RansacLib
 RansacLib uses templates to enable easy integration of novel solvers into RANSAC. More precisely, three classes need to be defined: `class Model`, `class ModelVector`, `class Solver`. These classes are explained in more detail in the following:
 
