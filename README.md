@@ -39,6 +39,7 @@ git submodule update --init --recursive
 install setuptools
 
 ### linux
+Make sure to set the `CMAKE_PREFIX_PATH` environment variable to point to the directory containing cmake files for PoseLib.
 ```
 pip install ./
 ```
@@ -53,10 +54,10 @@ $env:CMAKE_TOOLCHAIN_FILE='C:\Workspace\vcpkg\scripts\buildsystems\vcpkg.cmake'
 
 Install Eigen3, Ceres with vcpkg
 
-build PoseLib opengv, then (change the path to opengv with yours)
+build PoseLib, then (change the path to PoseLib with yours)
 in powershell
 ```
-$env:CMAKE_PREFIX_PATH='C:\Workspace\dev\opengv\build'
+$env:CMAKE_PREFIX_PATH='C:\Workspace\dev\PoseLibe\_install/lib/cmake/PoseLib'
 py -3.6 -m pip install .
 ```
 
