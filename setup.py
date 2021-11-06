@@ -92,6 +92,10 @@ class CMakeBuild(build_ext):
             build_args += ['--', '/m']
         else:
             cmake_args += ['-DCMAKE_BUILD_TYPE=' + cfg]
+            if os.environ.get('CMAKE_PREFIX_PATH') is not None:
+                cmake_prefix_path = os.environ.get('CMAKE_PREFIX_PATH')
+                print(f'-DCMAKE_PREFIX_PATH={cmake_prefix_path}')
+                cmake_args += [f'-DCMAKE_PREFIX_PATH={cmake_prefix_path}']
             build_args += ['--', '-j2']
 
         env = os.environ.copy()
@@ -112,7 +116,7 @@ setup(
     author_email='torsten.sattler.de@googlemail.com',
     description='RansacLib bindings',
     long_description='',
-    ext_modules=[CMakeExtension('colmap')],
+    ext_modules=[CMakeExtension('ransaclib')],
     cmdclass=dict(build_ext=CMakeBuild),
     zip_safe=False,
 )

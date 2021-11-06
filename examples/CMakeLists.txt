@@ -19,7 +19,7 @@ endif()
 
 include_directories (
   ${CMAKE_SOURCE_DIR}
-  ${EIGEN_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
   ${CERES_INCLUDE_DIRS}
   ${POSELIB_INCLUDE_DIRS}
 )
