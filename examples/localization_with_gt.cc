@@ -44,9 +44,6 @@
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
 
-#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
-#include <opengv/absolute_pose/methods.hpp>
-#include <opengv/types.hpp>
 
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
@@ -185,6 +182,7 @@ int main(int argc, char** argv) {
   using ransac_lib::calibrated_absolute_pose::CameraPoses;
   using ransac_lib::calibrated_absolute_pose::Points2D;
   using ransac_lib::calibrated_absolute_pose::Points3D;
+  using ransac_lib::calibrated_absolute_pose::ViewingRays;
 
   std::cout << " usage: " << argv[0] << " images_with_intrinsics outfile "
             << "inlier_threshold num_lo_steps invert_Y_Z points_centered "
@@ -267,7 +265,7 @@ int main(int argc, char** argv) {
         points2D[j][1] -= query_data[i].c_y;
       }
     }
-    opengv::bearingVectors_t rays;
+    ViewingRays rays;
     CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
         query_data[i].focal_x, query_data[i].focal_y, points2D, &rays);
 

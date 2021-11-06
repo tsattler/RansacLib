@@ -42,9 +42,6 @@
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
 
-#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
-#include <opengv/absolute_pose/methods.hpp>
-#include <opengv/types.hpp>
 
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
@@ -56,8 +53,8 @@ void GenerateRandomInstance(const double width, const double height,
                             const double focal_length, const int num_inliers,
                             const int num_outliers, double inlier_threshold,
                             const double min_depth, const double max_depth,
-                            Points2D* points2D, opengv::bearingVectors_t* rays,
-                            opengv::points_t* points3D) {
+                            Points2D* points2D, ViewingRays* rays,
+                            Points3D* points3D) {
   const int kNumPoints = num_inliers + num_outliers;
   points2D->resize(kNumPoints);
   points3D->resize(kNumPoints);
@@ -82,7 +79,7 @@ void GenerateRandomInstance(const double width, const double height,
     const int kIndex = indices[i];
     (*points2D)[kIndex] = Eigen::Vector2d(distr_x(rng), distr_y(rng));
 
-    opengv::point_t dir = (*points2D)[kIndex].homogeneous();
+    Eigen::Vector3d dir = (*points2D)[kIndex].homogeneous();
     dir.head<2>() /= focal_length;
     dir.normalize();
 
@@ -99,7 +96,7 @@ void GenerateRandomInstance(const double width, const double height,
     const int kIndex = indices[i];
     Eigen::Vector2d p(distr_x(rng), distr_y(rng));
 
-    opengv::point_t dir = p.homogeneous();
+    Eigen::Vector3d dir = p.homogeneous();
     dir.head<2>() /= focal_length;
     dir.normalize();
 
@@ -135,10 +132,13 @@ void GenerateRandomInstance(const double width, const double height,
 int main(int argc, char** argv) {
   ransac_lib::LORansacOptions options;
   options.min_num_iterations_ = 100u;
-  options.max_num_iterations_ = 100000u;
+  options.max_num_iterations_ = 1000000u;
 
   std::random_device rand_dev;
   options.random_seed_ = rand_dev();
+
+  using ransac_lib::calibrated_absolute_pose::Points3D;
+  using ransac_lib::calibrated_absolute_pose::ViewingRays;
 
   // Generates random instances for outlier ratios 10%, 20%, 30%, ..., 90%,
   // and then applies RANSAC on it.
@@ -162,8 +162,8 @@ int main(int argc, char** argv) {
     int num_inliers = kNumDataPoints - num_outliers;
 
     ransac_lib::calibrated_absolute_pose::Points2D points2D;
-    opengv::bearingVectors_t rays;
-    opengv::points_t points3D;
+    ViewingRays rays;
+    Points3D points3D;
     ransac_lib::calibrated_absolute_pose::GenerateRandomInstance(
         kWidth, kHeight, kFocalLength, num_inliers, num_outliers, 2.0, 2.0,
         10.0, &points2D, &rays, &points3D);

@@ -46,10 +46,6 @@
 #include <Eigen/Geometry>
 #include <Eigen/StdVector>
 
-#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
-#include <opengv/absolute_pose/methods.hpp>
-#include <opengv/types.hpp>
-
 #include <RansacLib/ransac.h>
 #include "calibrated_absolute_pose_estimator.h"
 
@@ -74,6 +70,7 @@ py::dict ransaclib_localization(const std::string query_name,
   using ransac_lib::calibrated_absolute_pose::CameraPoses;
   using ransac_lib::calibrated_absolute_pose::Points2D;
   using ransac_lib::calibrated_absolute_pose::Points3D;
+  using ransac_lib::calibrated_absolute_pose::ViewingRays;
 
   std::cout << std::endl << std::endl;
 
@@ -96,7 +93,7 @@ py::dict ransaclib_localization(const std::string query_name,
   std::cout << "  " << query_name << " "
             << focal_x << " " << focal_y
             << std::endl;
-  opengv::bearingVectors_t rays;
+  ViewingRays rays;
   CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
       focal_x, focal_y, points2D, &rays);
 

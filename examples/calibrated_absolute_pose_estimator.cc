@@ -78,7 +78,7 @@ struct ReprojectionError {
                                          const double X, const double Y,
                                          const double Z, const double fx,
                                          const double fy) {
-    return (new ceres::AutoDiffCostFunction<NormalizedReprojectionError, 2, 6>(
+    return (new ceres::AutoDiffCostFunction<ReprojectionError, 2, 6>(
         new ReprojectionError(x, y, X, Y, Z, fx, fy)));
   }
 
@@ -121,7 +121,7 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
   int num_sols = pose_lib::p3p(x, X, &poselib_poses);
   if (num_sols == 0) return 0;
 
-  for (const PoseLib::CameraPose& pose : poselib_poses) {
+  for (const pose_lib::CameraPose& pose : poselib_poses) {
     CameraPose P;
     P.topLeftCorner<3, 3>() = pose.R;
     P.col(3) = -pose.R.transpose() * pose.t;
@@ -187,8 +187,8 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
     const Eigen::Vector2d& p_img = points2D_[kIdx];
     const Eigen::Vector3d& p_3D = points3D_[kIdx];
     ceres::CostFunction* cost_function =
-        NormalizedReprojectionError::CreateCost(
-            p_img[0], p_img[1], p_3D[0], p_3D[1], p_3D[2], focal_x_, focal_y_);
+        ReprojectionError::CreateCost(p_img[0], p_img[1], p_3D[0], p_3D[1],
+                                      p_3D[2], focal_x_, focal_y_);
 
     refinement_problem.AddResidualBlock(cost_function, nullptr, camera);
   }

@@ -4,7 +4,7 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/cmake")
   set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 endif ()
 
-#SET(CMAKE_CXX_FLAGS "-std=gnu++17")
+SET(CMAKE_CXX_FLAGS "-std=gnu++11")
 
 find_package (Eigen3 REQUIRED)
 
