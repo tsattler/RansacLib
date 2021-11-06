@@ -15,21 +15,20 @@ Besides the actual library, we also provide examples that illustrate how to use 
 ```
 mkdir build
 cd build/
-cmake ../
+cmake -DCMAKE_PREFIX_PATH=/path/to/poselib/_install/lib/cmake/PoseLib ../
 make
 ```
-We currently provide two examples:
+We currently provide three examples:
 * `line_estimation` shows how to implement a solver for 2D line fitting and integrate it into RansacLib.
+* `hybrid_line_estimation` shows how to implement a hybrid solver for 2D line fitting and integrate it into HybridRANSAC.
 * `camera_pose_estimation` shows how to implement a solver for absolute pose estimation of calibrated cameras and how to integrate it into RansacLib.
 
 Other examples provides in `examples/` are used for internal testing and can be safely ignored.
 
 There are currently three dependencies:
 * [Eigen](http://eigen.tuxfamily.org/index.php?title=Main_Page)
-* [OpenGV](https://github.com/laurentkneip/opengv)
+* [PoseLib](https://github.com/vlarsson/PoseLib)
 * [Ceres Solver](http://ceres-solver.org/)
-
-**Important**: Eigen requires alignment of [certain types](https://eigen.tuxfamily.org/dox-devel/group__TopicFixedSizeVectorizable.html) when vectorization is used. OpenGV uses vectorization to accelerate some computations. As such, it is critical to compile the examples that depend on OpenGV with exactly the same optimization flags as OpenGV. This should be ensured at the moment for Unix-based systems (Linux, Mac OS X), but we did not test it under Windows. If you are experiencing problems at run-time or during compilation, please compare `examples/CMakeLists.txt` with `opengv/CMakeLists.txt` and if nessecary add additional flags to `examples/CMakeLists.txt`.
 
 ### Python bindings
 pybind11 included as a submodule. After cloning the repository, run
