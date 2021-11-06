@@ -43,9 +43,8 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
-#include <opengv/absolute_pose/CentralAbsoluteAdapter.hpp>
-#include <opengv/absolute_pose/methods.hpp>
-#include <opengv/types.hpp>
+#include <PoseLib/p3p.h>
+#include <PoseLib/types.h>
 
 namespace ransac_lib {
 
@@ -61,9 +60,8 @@ typedef std::vector<Eigen::Vector2d> Points2D;
 typedef std::vector<Vector3d, Eigen::aligned_allocator<Vector3d>> Points3D;
 typedef std::vector<Vector3d, Eigen::aligned_allocator<Vector3d>> ViewingRays;
 
-// Implements a camera pose solver for calibrated cameras. Uses the OpenGV
-// implementations of the P3P and EPnP solvers, as well as for non-linear
-// optimization.
+// Implements a camera pose solver for calibrated cameras. Uses the PoseLib
+// implementations of the P3P solvers and Ceres for non-linear optimization.
 // The P3P algorithm is used as a minimal solver. To avoid returning multiple
 // models, a fourth poit is used to pick at most one model out of the up to
 // four models estimated by P3P.
@@ -89,8 +87,6 @@ class CalibratedAbsolutePoseEstimator {
 
   inline int min_sample_size() const { return 4; }
 
-  // OpenGV's EPnP implementation asserts that there are at least 6 matches as
-  // input (to ensure that only a single solution is provided).
   inline int non_minimal_sample_size() const { return 6; }
 
   inline int num_data() const { return num_data_; }
@@ -98,7 +94,7 @@ class CalibratedAbsolutePoseEstimator {
   int MinimalSolver(const std::vector<int>& sample, CameraPoses* poses) const;
 
   // Returns 0 if no model could be estimated and 1 otherwise.
-  // Implemented by a simple linear least squares solver.
+  // Implemented by non-linear optimization via Ceres.
   int NonMinimalSolver(const std::vector<int>& sample, CameraPose* pose) const;
 
   // Evaluates the pose on the i-th data point.
@@ -119,8 +115,8 @@ class CalibratedAbsolutePoseEstimator {
   Points2D points2D_;
   // Matrix holding the corresponding 3D point positions.
   Points3D points3D_;
-  // The adapter used by OpenGV's solvers.
-  opengv::absolute_pose::CentralAbsoluteAdapter adapter_;
+  // Matrix holding the viewing ray for each 2D point position.
+  ViewingRays rays_;
   int num_data_;
 };
 

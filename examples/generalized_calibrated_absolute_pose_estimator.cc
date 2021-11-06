@@ -49,7 +49,7 @@ GeneralizedCalibratedAbsolutePoseEstimator::
       points2D_(points2D),
       points3D_(points3D),
       camera_indices_(camera_indices),
-      adapter_(rays, camera_indices, points3D, positions, rotations) {
+      rays_(rays) {
   num_data_ = static_cast<int>(points2D_.size());
 
   rig_.global_pose.topLeftCorner<3, 3>() = Matrix3d::Identity();
@@ -65,9 +65,18 @@ GeneralizedCalibratedAbsolutePoseEstimator::
 int GeneralizedCalibratedAbsolutePoseEstimator::MinimalSolver(
     const std::vector<int>& sample, MultiCameraRigs* poses) const {
   poses->clear();
-  CameraPoses gp3p_poses = opengv::absolute_pose::gp3p(adapter_, sample);
-  if (gp3p_poses.empty()) return 0;
-  for (const CameraPose& pose : gp3p_poses) {
+
+  std::vector<Eigen::Vector3d> p(3), x(3), X(3);
+  for (int i = 0; i < 3; ++i) {
+    p[i] = rig_.cameras[camera_indices_[sample[i]]].pose.col(3);
+    x[i] = rays_[sample[i]];
+    X[i] = points3D_[sample[i]];
+  }
+
+  std::vector<pose_lib::CameraPose> poselib_poses;
+  int num_sols = pose_lib::gp3p(p, x, X, &poselib_poses);
+  if (num_sols == 0) return 0;
+  for (const pose_lib::CameraPose& pose : poselib_poses) {
     MultiCameraRig rig;
     AssembleRig(pose, &rig);
     const double kError = EvaluateModelOnPoint(rig, sample[3]);
@@ -149,11 +158,10 @@ void GeneralizedCalibratedAbsolutePoseEstimator::LeastSquares(
 }
 
 void GeneralizedCalibratedAbsolutePoseEstimator::AssembleRig(
-    const CameraPose& pose, MultiCameraRig* rig) const {
+    const pose_lib::CameraPose& pose, MultiCameraRig* rig) const {
   *rig = rig_;
-  rig->global_pose.topLeftCorner<3, 3>() =
-      pose.topLeftCorner<3, 3>().transpose();
-  rig->global_pose.col(3) = pose.col(3);
+  rig->global_pose.topLeftCorner<3, 3>() = pose.R;
+  rig->global_pose.col(3) = -pose.R.transpose() * pose.t;
 }
 
 }  // namespace generalized_calibrated_absolute_pose

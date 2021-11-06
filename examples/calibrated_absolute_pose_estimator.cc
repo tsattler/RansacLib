@@ -40,9 +40,9 @@ namespace ransac_lib {
 
 namespace calibrated_absolute_pose {
 
-struct NormalizedReprojectionError {
-  NormalizedReprojectionError(double x, double y, double X, double Y, double Z,
-                              double fx, double fy)
+struct ReprojectionError {
+  ReprojectionError(double x, double y, double X, double Y, double Z,
+                    double fx, double fy)
       : point2D_x(x),
         point2D_y(y),
         point3D_X(X),
@@ -79,7 +79,7 @@ struct NormalizedReprojectionError {
                                          const double Z, const double fx,
                                          const double fy) {
     return (new ceres::AutoDiffCostFunction<NormalizedReprojectionError, 2, 6>(
-        new NormalizedReprojectionError(x, y, X, Y, Z, fx, fy)));
+        new ReprojectionError(x, y, X, Y, Z, fx, fy)));
   }
 
   // Assumes that the measurement is centered around the principal point.
@@ -104,27 +104,31 @@ CalibratedAbsolutePoseEstimator::CalibratedAbsolutePoseEstimator(
       squared_inlier_threshold_(squared_inlier_threshold),
       points2D_(points2D),
       points3D_(points3D),
-      adapter_(rays, points3D) {
+      rays_(rays) {
   num_data_ = static_cast<int>(points2D_.size());
 }
 
 int CalibratedAbsolutePoseEstimator::MinimalSolver(
     const std::vector<int>& sample, CameraPoses* poses) const {
   poses->clear();
-  CameraPoses p3p_poses = opengv::absolute_pose::p3p_kneip(adapter_, sample);
-  if (p3p_poses.empty()) return 0;
-  for (const CameraPose& pose : p3p_poses) {
-    CameraPose P = pose;
-    // OpenGV returns the transformation from the camera to the world coordinate
-    // system. We store the rotation from the world to the local coordinate
-    // system instead.
-    P.topLeftCorner<3, 3>() = pose.topLeftCorner<3, 3>().transpose();
+  std::vector<Eigen::Vector3d> x(3), X(3);
+  for (int i = 0; i < 3; ++i) {
+    x[i] = rays_[sample[i]];
+    X[i] = points3D_[sample[i]];
+  }
+
+  std::vector<pose_lib::CameraPose> poselib_poses;
+  int num_sols = pose_lib::p3p(x, X, &poselib_poses);
+  if (num_sols == 0) return 0;
+
+  for (const PoseLib::CameraPose& pose : poselib_poses) {
+    CameraPose P;
+    P.topLeftCorner<3, 3>() = pose.R;
+    P.col(3) = -pose.R.transpose() * pose.t;
+
     const double kError = EvaluateModelOnPoint(P, sample[3]);
     if (kError < squared_inlier_threshold_) {
-      //      // Refine using all four points.
-      //      LeastSquares(sample, &P);
       poses->push_back(P);
-      // At most one pose should be correct.
       break;
     }
   }
@@ -133,10 +137,9 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
 }
 
 // Returns 0 if no model could be estimated and 1 otherwise.
-// Implemented by a simple linear least squares solver.
+// Implemented via non-linear optimization in Ceres.
 int CalibratedAbsolutePoseEstimator::NonMinimalSolver(
     const std::vector<int>& sample, CameraPose* pose) const {
-  // Alternative: Run minimal solver and polish.
   CameraPoses poses;
   if (MinimalSolver(sample, &poses) == 1) {
     *pose = poses[0];
@@ -145,14 +148,6 @@ int CalibratedAbsolutePoseEstimator::NonMinimalSolver(
   } else {
     return 0;
   }
-      
-//   CameraPose P = opengv::absolute_pose::epnp(adapter_, sample);
-//   // OpenGV returns the transformation from the camera to the world coordinate
-//   // system. We store the rotation from the world to the local coordinate
-//   // system instead.
-//   *pose = P;
-//   pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
-//   return 1;
 }
 
 // Evaluates the pose on the i-th data point.
@@ -185,7 +180,7 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
   camera[5] = pose->col(3)[2];
 
   ceres::Problem refinement_problem;
-//  ceres::LossFunction* cauchy_loss = new ceres::CauchyLoss(1.0);
+
   const int kSampleSize = static_cast<int>(sample.size());
   for (int i = 0; i < kSampleSize; ++i) {
     const int kIdx = sample[i];
@@ -194,27 +189,15 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
     ceres::CostFunction* cost_function =
         NormalizedReprojectionError::CreateCost(
             p_img[0], p_img[1], p_3D[0], p_3D[1], p_3D[2], focal_x_, focal_y_);
-//     double error_i = std::sqrt(EvaluateModelOnPoint(*pose, sample[i]));
-//     error_i = std::max(0.00001, error_i);
+
     refinement_problem.AddResidualBlock(cost_function, nullptr, camera);
-//    refinement_problem.AddResidualBlock(cost_function, cauchy_loss, camera);
-//     refinement_problem.AddResidualBlock(cost_function,
-//                                         new ceres::ScaledLoss(nullptr,
-//                                                               1.0 / error_i,
-//                                                               ceres::DO_NOT_TAKE_OWNERSHIP),
-//                                         camera);
   }
 
   ceres::Solver::Options options;
   options.linear_solver_type = ceres::DENSE_QR;
   options.minimizer_progress_to_stdout = false;
-  //  options.function_tolerance = 0.000001;
   ceres::Solver::Summary summary;
   ceres::Solve(options, &refinement_problem, &summary);
-
-  //  std::cout << summary.BriefReport() << std::endl;
-//  delete cauchy_loss;
-//  cauchy_loss = nullptr;
 
   if (summary.IsSolutionUsable()) {
     Eigen::Vector3d axis(camera[0], camera[1], camera[2]);
@@ -227,34 +210,6 @@ void CalibratedAbsolutePoseEstimator::LeastSquares(
     pose->col(3) = Eigen::Vector3d(camera[3], camera[4], camera[5]);
   }
 }
-
-//// Reference implementation using OpenGV's non-linear refinement.
-// void CalibratedAbsolutePoseEstimator::LeastSquares(
-//    const std::vector<int>& sample, CameraPose* pose) const {
-//  // OpenGV returns the transformation from the camera to the world coordinate
-//  // system. We store the rotation from the world to the local coordinate
-//  // system instead.
-//  Eigen::Matrix3d R = pose->topLeftCorner<3, 3>().transpose();
-//  Eigen::Vector3d c = pose->col(3);
-//  // At the moment, we need to copy data as we need to add the current pose
-//  // estimate to the adapter, which would break the requirement that this
-//  // function is constant.
-//  const int kSampleSize = static_cast<int>(sample.size());
-//  opengv::bearingVectors_t bearing_vectors(kSampleSize);
-//  opengv::points_t points(kSampleSize);
-//  for (int i = 0; i < kSampleSize; ++i) {
-//    const int kIdx = sample[i];
-//    bearing_vectors[i] = adapter_.getBearingVector(kIdx);
-//    points[i] = adapter_.getPoint(kIdx);
-//  }
-//
-//  opengv::absolute_pose::CentralAbsoluteAdapter lsq_adapter(bearing_vectors,
-//                                                            points, c, R);
-//
-//  CameraPose P = opengv::absolute_pose::optimize_nonlinear(lsq_adapter);
-//  *pose = P;
-//  pose->topLeftCorner<3, 3>() = P.topLeftCorner<3, 3>().transpose();
-//}
 
 void CalibratedAbsolutePoseEstimator::PixelsToViewingRays(
     const double focal_x, const double focal_y, const Points2D& points2D,

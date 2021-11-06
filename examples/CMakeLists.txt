@@ -12,6 +12,8 @@ find_package (opengv REQUIRED)
 
 find_package (Ceres REQUIRED)
 
+find_package (PoseLib REQUIRED)
+
 add_definitions (-march=native)
 if(MSVC)	
   add_definitions(-D_USE_MATH_DEFINES)

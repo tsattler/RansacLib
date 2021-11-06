@@ -43,9 +43,8 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
-#include <opengv/absolute_pose/NoncentralAbsoluteAdapter.hpp>
-#include <opengv/absolute_pose/methods.hpp>
-#include <opengv/types.hpp>
+#include <PoseLib/gp3p.cc>
+#include <PoseLib/types.h>
 
 namespace ransac_lib {
 
@@ -139,7 +138,7 @@ class GeneralizedCalibratedAbsolutePoseEstimator {
                     MultiCameraRigs* poses) const;
 
   // Returns 0 if no model could be estimated and 1 otherwise.
-  // Implemented by a simple linear least squares solver.
+  // Calls the minimal solver followed by non-linear refinement.
   int NonMinimalSolver(const std::vector<int>& sample,
                        MultiCameraRig* pose) const;
 
@@ -163,8 +162,10 @@ class GeneralizedCalibratedAbsolutePoseEstimator {
   // For each match, stores the camera in the multi-camera rig where it was
   // detected.
   std::vector<int> camera_indices_;
-  // The adapter used by OpenGV's solvers.
-  opengv::absolute_pose::NoncentralAbsoluteAdapter adapter_;
+  // For each match, stores the corresponding viewing ray in the rig coordinate
+  // system.
+  ViewingRays rays_;
+
   int num_data_;
   int num_cameras_;
 };
