@@ -242,7 +242,7 @@ Please cite also the original publications of the different methods:
   year = {1998}
 }
 ```
-* When using the ```LocallyOptimizedHybridMSAC``` implementatio in [ransac.h](https://github.com/tsattler/RansacLib/blob/master/RansacLib/ransac.h), please cite
+* When using the ```HybridLocallyOptimizedMSAC``` implementatio in [hybrid_ransac.h](https://github.com/tsattler/RansacLib/blob/master/RansacLib/hybrid_ransac.h), please cite
 ```
 @inproceedings{Camposeco2018CPVR,
 title = {{Hybrid Camera Pose Estimation}},
