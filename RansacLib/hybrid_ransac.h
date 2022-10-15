@@ -550,8 +550,11 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
       LeastSquaresFit(options, options.squared_inlier_thresholds_, solver_type,
                       solver, rng, &m_non_min);
 
+      // The current threshold multiplier and its update.
+      std::vector<double> cur_squared_inlier_thresholds = squared_inlier_thresholds;
+
       for (int i = 0; i < options.num_lsq_iterations_; ++i) {
-        LeastSquaresFit(options, squared_inlier_thresholds, solver_type, solver,
+        LeastSquaresFit(options, cur_squared_inlier_thresholds, solver_type, solver,
                         rng, &m_non_min);
 
         ScoreModel(options, solver, m_non_min,
@@ -559,8 +562,8 @@ class HybridLocallyOptimizedMSAC : public HybridRansacBase {
                    &score);
         UpdateBestModel(score, m_non_min, solver_type, score_best_minimal_model,
                         best_minimal_model, best_solver_type);
-        for (int i = 0; i < kNumDataTypes; ++i) {
-          squared_inlier_thresholds[i] -= thresh_mult_updates[i];
+        for (int j = 0; j < kNumDataTypes; ++j) {
+          cur_squared_inlier_thresholds[j] -= thresh_mult_updates[j];
         }
       }
     }
