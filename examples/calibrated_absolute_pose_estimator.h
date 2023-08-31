@@ -43,7 +43,7 @@
 #include <Eigen/Core>
 #include <Eigen/StdVector>
 
-#include <PoseLib/p3p.h>
+#include <PoseLib/solvers/p3p.h>
 #include <PoseLib/types.h>
 
 namespace ransac_lib {

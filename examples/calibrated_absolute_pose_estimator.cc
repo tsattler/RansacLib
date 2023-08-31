@@ -117,14 +117,14 @@ int CalibratedAbsolutePoseEstimator::MinimalSolver(
     X[i] = points3D_[sample[i]];
   }
 
-  std::vector<pose_lib::CameraPose> poselib_poses;
-  int num_sols = pose_lib::p3p(x, X, &poselib_poses);
+  std::vector<poselib::CameraPose> poselib_poses;
+  int num_sols = poselib::p3p(x, X, &poselib_poses);
   if (num_sols == 0) return 0;
 
-  for (const pose_lib::CameraPose& pose : poselib_poses) {
+  for (const poselib::CameraPose& pose : poselib_poses) {
     CameraPose P;
-    P.topLeftCorner<3, 3>() = pose.R;
-    P.col(3) = -pose.R.transpose() * pose.t;
+    P.topLeftCorner<3, 3>() = pose.R();
+    P.col(3) = -pose.R().transpose() * pose.t;
 
     const double kError = EvaluateModelOnPoint(P, sample[3]);
     if (kError < squared_inlier_threshold_) {
